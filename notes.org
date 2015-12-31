@@ -1,0 +1,80 @@
+* TODO nix-env-rebuild: split off into its own package
+* TODO Remove nix-env-rebuild from nix-tools
+* TODO Set upper bounds
+preferably with a script that reads the current haskellPackages versions
+* TODO Make cabal file aware of tests
+including test-only dependencies
+* TODO Readme.md
+* TODO nix-env-rebuild: implement things as commands
+- dry-run (now without args)
+- build (now -x)
+- switch (nix-env -ir --from-profile $REBULID_CACHE)
+- [ ] Use applicative notation
+- [ ] Implement new flags
+* TODO Support -b flag
+that only updates downloadable stuff
+* TODO Support status for adding
+Currently: 
+
+Adding:
+...
+  texlive-full
+  
+Should be:
+
+Adding:
+...
+  texlive-full (Source)
+* TODO Support config files
+* TODO Treat unison updates specially (or at least warn)
+because unison breaks if the server does not have the same version installed
+* TODO env-rebuild: support updates without version
+Maybe it already works.. test it!
+* TODO Add version option
+Every tool should support "--version". This should be done centrally in Utils.hs or similar.
+* TODO Find a way to test if and how keep-around packages will be rebuilt/updated
+i.e. if they are available in a cache
+* TODO nix-env-rebuild: also give the package attribute names in outputs
+So that it is easy to update packages.nix
+* TODO nix-env-rebuild: Short (less verbose) mode
+- where fetch reinstalls are only counted
+- and maybe some categories are listed inline, instead of one-per-line
+* TODO Implement correct version comparison:
+   Versions
+
+       The upgrade operation determines whether a derivation y is an
+       upgrade of a derivation x by looking at their respective name
+       attributes. The names (e.g., gcc-3.3.1 are split into two
+       parts: the package name (gcc), and the version (3.3.1). The
+       version part starts after the first dash not following by a
+       letter.  x is considered an upgrade of y if their package names
+       match, and the version of y is higher that that of x.
+
+       The versions are compared by splitting them into contiguous
+       components of numbers and letters. E.g., 3.3.1pre5 is split
+       into [3, 3, 1, "pre", 5]. These lists are then compared
+       lexicographically (from left to right). Corresponding
+       components a and b are compared as follows. If they are both
+       numbers, integer comparison is used. If a is an empty string
+       and b is a number, a is considered less than b. The special
+       string component pre (for pre-release) is considered to be less
+       than other components. String components are considered less
+       than number components. Otherwise, they are compared
+       lexicographically (i.e., using case-sensitive string
+       comparison).
+
+       This is illustrated by the following examples:
+
+           1.0 < 2.3
+           2.1 < 2.3
+           2.3 = 2.3
+           2.5 > 2.3
+           3.1 > 2.3
+           2.3.1 > 2.3
+           2.3.1 > 2.3a
+           2.3pre1 < 2.3
+           2.3pre3 < 2.3pre12
+           2.3a < 2.3c
+           2.3pre1 < 2.3c
+           2.3pre1 < 2.3q
+* TODO nix-env-rebuild: Add command to add things to "keep-around"
