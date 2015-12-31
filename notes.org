@@ -4,7 +4,17 @@
 preferably with a script that reads the current haskellPackages versions
 * TODO Make cabal file aware of tests
 including test-only dependencies
+* TODO Remove "formatting" dep in favor of "printf-th"
+* TODO Document "keep-around"
+what is it supposed to do, actually?
+* TODO Clean up Utils.hs
+* TODO Allow to declare nixpkgs location
+* TODO Sync keep-around
+Either manage it declaratively and sync the "spec" or sync profiles somehow
 * TODO Readme.md
+* TODO Catch Shelly exceptions when run in "production"
+and give error messages that do not reveal implementation details
+(like shelly's command history traces)
 * TODO nix-env-rebuild: implement things as commands
 - dry-run (now without args)
 - build (now -x)

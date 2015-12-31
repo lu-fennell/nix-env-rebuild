@@ -17,10 +17,12 @@ module Nix.Utils
        , parseNixPatch
        , applyNixPatch
        , NixPatch(..)
+       , runStderr
+       , maybeOpt
        ) where
 
 import BasicPrelude hiding (FilePath, (</>), (<.>))
-import Shelly (Sh, get_env, toTextIgnore)
+import Shelly (Sh, get_env, toTextIgnore, runHandles, (-|-), run)
 import Options.Applicative hiding ((&))
 import Options.Applicative.Types (readerAsk)
 import Data.Traversable (sequenceA)
@@ -31,6 +33,7 @@ import qualified Filesystem.Path.CurrentOS as FilePath
 import qualified Data.Text as Text
 import qualified Data.Char as Char
 import "mtl" Control.Monad.State
+import Data.Text.IO (hGetContents)
   
 default (Text)
 
@@ -70,7 +73,14 @@ getenv' :: Text -> Sh Text
 getenv' v =
   fromMaybe (error "environment variable " <> v <> " not found(??)")
   <$> get_env v
+  
+runStderr :: FilePath -> [Text] -> Sh Text
+runStderr p args = runHandles p args [] $ \_ _ h -> liftIO (hGetContents h) -|- run "cat" []
 
+
+-- -------------------------------------------------------------------
+-- nix package versions
+-- -------------------------------------------------------------------
 type PackageVersion = Text
 
 splitPackage :: Text -> (Text, Text)
@@ -83,6 +93,13 @@ splitPackage p = (name, versionString)
         firstNonLetter :: Text -> Bool
         firstNonLetter t = isJust $ guard . not . Char.isLetter =<< preview _head t
   
+
+-- -------------------------------------------------------------------
+-- Misc
+-- -------------------------------------------------------------------
+
+maybeOpt :: Text -> Maybe FilePath -> [Text]
+maybeOpt opt = maybe [] (\p -> [opt, toTextIgnore p])
 
 -- -------------------------------------------------------------------
 -- Filepath lenses
