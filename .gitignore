@@ -2,4 +2,3 @@
 /nix-env-rebuild.nix
 /result
 /nix-env-rebuild-*.nix
-/shell.nix
