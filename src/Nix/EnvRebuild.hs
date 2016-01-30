@@ -23,7 +23,7 @@ import qualified Data.Set as S
 
 import Data.Attoparsec.Text
 
-import qualified Nix.Utils as Utils
+import qualified Utils
 import Nix.Types
 
 default (Text)

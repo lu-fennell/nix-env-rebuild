@@ -4,21 +4,24 @@ module Nix.Types where
 
 import BasicPrelude hiding (try, (</>), (<.>), FilePath, show, rem, takeWhile)
 
-import qualified Data.Text as T
-import qualified Nix.Utils as Utils
+import qualified Data.Text as Text
+import qualified Data.Char as Char
 import Formatting ((%))
 import qualified Formatting as Fmt
 import qualified Data.Set as S
+import Control.Lens
 
 -- -------------------------------------------------------------------
 -- Packages
 -- -------------------------------------------------------------------
 
 type PackageName = Text
+type PackageVersion = Text
 type Package = Text
 type StorePath = Text
+
 data VersionedPackage = VPkg { pName :: PackageName
-                             , pVer :: Utils.PackageVersion 
+                             , pVer :: PackageVersion 
                              }
   deriving (Eq, Ord, Show)
   
@@ -33,11 +36,17 @@ data PkgStatus = Present | Prebuilt | Source
            
 parseVersionedPackage :: Package -> VersionedPackage
 parseVersionedPackage p = VPkg{..}
-  where (pName, pVer) = Utils.splitPackage p
+  where (pName, pVer) = over both (Text.intercalate "-") 
+                                     (splitFirstNonLetter (Text.splitOn "-" p))
+        splitFirstNonLetter :: [Text] -> ([Text],[Text])
+        splitFirstNonLetter xs = fromMaybe (xs,[])
+                                           (splitAt <$> findIndex firstNonLetter xs <*> pure xs)
+        firstNonLetter :: Text -> Bool
+        firstNonLetter t = isJust $ guard . not . Char.isLetter =<< preview _head t
 
   
 formatVersionPackage :: VersionedPackage -> PackageName
-formatVersionPackage (VPkg {..}) = if T.null pVer 
+formatVersionPackage (VPkg {..}) = if Text.null pVer 
                                    then pName 
                                    else pName <> "-" <> pVer
 
@@ -45,14 +54,13 @@ formatPackageWithPath :: PackageWithPath -> PackageName
 formatPackageWithPath = formatVersionPackage . pwpPkg
 
 
-
 -- -------------------------------------------------------------------
 -- Updates
 -- -------------------------------------------------------------------
 data Upd = Upd { uName :: Package
-               , uOld :: Utils.PackageVersion 
+               , uOld :: PackageVersion 
                , uOldPath :: StorePath
-               , uNew :: Utils.PackageVersion 
+               , uNew :: PackageVersion 
                , uNewPath :: StorePath
                , uStatus :: PkgStatus -- ^ the status of the new package
                }
@@ -75,20 +83,20 @@ newPackage Upd{..} = Pwp { pwpPkg = VPkg{pName = uName, pVer = uNew}
 filterUpds :: Set PackageWithPath -- ^ added packages
            -> Set PackageWithPath -- ^ removed packages
            -> (Set Upd, Set PackageWithPath, Set PackageWithPath)
-filterUpds fresh rem = (upds, fresh', removing')
+filterUpds fresh removed = (upds, fresh', removing')
     where upds = S.fromList $
-                 [upd | fr <- S.toList fresh 
-                      , re <- S.toList rem
-                      , upd <- maybeToList $ findUpdate fr re
+                 [upd | f <- S.toList fresh 
+                      , r <- S.toList removed
+                      , upd <- maybeToList $ findUpdate f r
                  ]
-          removing' = rem S.\\ S.map oldPackage upds 
+          removing' = removed S.\\ S.map oldPackage upds 
           fresh' = fresh S.\\ S.map newPackage upds
 
 -- | Determine if an added package and a removed package form an update.
 findUpdate :: PackageWithPath -- ^ Added package
            -> PackageWithPath -- ^ Removed package
            -> Maybe Upd
-findUpdate ad re = mkUpd ad re
+findUpdate added removed = mkUpd added removed
   where mkUpd (Pwp { pwpPkg = (VPkg { pName = uName , pVer = uNew})
                    , pwpPath = uNewPath
                    , pwpStatus = uStatus
