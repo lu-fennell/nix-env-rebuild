@@ -1,29 +1,37 @@
-* TODO nix-env-rebuild: split off into its own package
-* TODO Remove nix-env-rebuild from nix-tools
-* TODO Set upper bounds
-preferably with a script that reads the current haskellPackages versions
-* TODO Make cabal file aware of tests
-including test-only dependencies
-* TODO Remove "formatting" dep in favor of "printf-th"
-* TODO Document "keep-around"
+* DONE nix-env-rebuild: split off into its own package
+* DONE Remove nix-env-rebuild from nix-tools
+* TODO Blocker for first release
+** TODO Clean up the code
+** TODO Clean up Utils.hs
+** TODO Document "keep-around"
 what is it supposed to do, actually?
-* TODO Clean up Utils.hs
-* TODO Allow to declare nixpkgs location
-* TODO Sync keep-around
-Either manage it declaratively and sync the "spec" or sync profiles somehow
-* TODO Readme.md
-* TODO Catch Shelly exceptions when run in "production"
+including test-only dependencies
+** TODO Make cabal file aware of tests
+** TODO Catch Shelly exceptions when run in "production"
 and give error messages that do not reveal implementation details
 (like shelly's command history traces)
-* TODO nix-env-rebuild: implement things as commands
+** TODO Readme.md
+** TODO Print status, not custom "availability"
+** TODO Implement "Availability"/Status
+- parse the "will be built" output
+- count the source packages
+- when verbose, list them
+* TODO Future
+** TODO Set upper bounds
+preferably with a script that reads the current haskellPackages versions
+** TODO Remove "formatting" dep in favor of "printf-th"
+** TODO Sync keep-around
+Either manage it declaratively and sync the "spec" or sync profiles somehow
+** TODO Support -b flag
+that only updates downloadable stuff
+* DONE Allow to declare nixpkgs location
+* DONE nix-env-rebuild: implement things as commands
 - dry-run (now without args)
 - build (now -x)
 - switch (nix-env -ir --from-profile $REBULID_CACHE)
-- [ ] Use applicative notation
-- [ ] Implement new flags
-* TODO Support -b flag
-that only updates downloadable stuff
-* TODO Support status for adding
+- [X] Use applicative notation
+- [X] Implement new flags
+* WONTFIX Support status for adding
 Currently: 
 
 Adding:
