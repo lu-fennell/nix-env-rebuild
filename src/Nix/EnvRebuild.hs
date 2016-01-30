@@ -19,7 +19,7 @@ import Text.Show.Pretty
 import Text.PrettyPrint ((<+>), ($$), ($+$))
 import qualified Text.PrettyPrint as PP
   
-import qualified Nix.Utils as Utils
+
 import qualified Data.Char as Char
 import Formatting ((%))
 import qualified Formatting as Fmt
@@ -30,24 +30,12 @@ import qualified Data.Set as S
 import Test.Framework
 import Test.Framework.Providers.HUnit
 import Test.HUnit
-
 import Data.Attoparsec.Text
 
+import qualified Nix.Utils as Utils
+import Nix.Types
+
 default (Text)
-
-
--- TODO: default values in help (options) output (e.g., the name of the packages files)
-
--- TODO: test cases for wanted/declared/added interaction
--- TODO: keep-around packages that imply a downgrade wrt to nixpkgs do
--- not work... we need to have replace VersionPackage with Package
-
--- TODO: try to estimate when things form keep-around would be rebuild 
-
--- TODO: allow ``overlay profile'' (e.g. one that is like the default,
--- except that another coq version is installed
-  
--- TODO: fix field names of the Results record (e.g. renamed -> renaming)
 
 
 ---------------------------
@@ -99,13 +87,16 @@ getConfig = do
                      <> value destProfile <> showDefault
                      <> help "Profile to store the build result into"
                      )
-                   cfgVerbose <- flag False
-                                 True (long "verbose" <> short 'v'
-                                      <> help "echo nix commands and their output") 
+                   cfgVerbose <- flag False True 
+                     (long "verbose" <> short 'v'
+                     <> help "echo nix commands and their output") 
                    cfgCommand <- subparser 
-                     ((Opt.command "dry-run" $ info (pure DryRun) (progDesc "Only show what would change"))
-                     <> (Opt.command "build" $ info (pure Build) (progDesc "Build into cache profile but do not switch the target profile"))
-                     <> (Opt.command "switch" $ info (pure Switch) (progDesc "Build packages into cache profile and switch the target profile")))
+                     (  (Opt.command "dry-run" $ info (pure DryRun) 
+                          (progDesc "Only show what would change"))
+                     <> (Opt.command "build" $ info (pure Build) 
+                          (progDesc "Build into cache profile but do not switch the target profile"))
+                     <> (Opt.command "switch" $ info (pure Switch) 
+                          (progDesc "Build packages into cache profile and switch the target profile")))
                      <|>
                      pure DryRun
                    
@@ -124,136 +115,57 @@ getConfig = do
 ---------------------------
 -- Main
 ---------------------------
-
 main :: IO ()
 main = shelly $ silently $ do
   cfg@Config{..} <- getConfig
   (if cfgVerbose then verbosely else silently) $ do
     r <- getResults cfg
     report cfg r
-    when (cfgCommand /= DryRun) $ print_stdout True $ print_stderr True $ doInstall cfg r
+    when (cfgCommand /= DryRun) $ print_stdout True $ print_stderr True $ 
+      doInstall cfg r
     echo $ "\n" <> finishMessage cfg 
-    where makeReport Config{..} r = 
-            let (upds, install', removing') = 
-                  filterUpds (installing r) (removing r)
-                versionUpdates = S.filter isStrictUpdate upds
-                reinstalls = S.map newPackage $ upds S.\\ versionUpdates
-                sourceReinstalls = S.filter (\Pwp{pwpStatus} -> pwpStatus == Source) 
-                                            reinstalls
-            in PP.text "Updating:" $$ PP.empty
-               $$ PP.nest 2 (formatSet formatUpd versionUpdates)
-               $$ PP.char ' ' $$
-               PP.text "Adding:" $$ PP.empty
-               $$ PP.nest 2 (formatSet formatPackageWithPath install')
-               $$ PP.char ' ' $$
-               PP.text "Reinstalling from source:" $$ PP.empty
-               $$ PP.nest 2 (formatSet formatPackageWithPath sourceReinstalls)
-               $$ PP.char ' ' $$
-               PP.text "Removing:" 
-               $$ PP.nest 2 (formatSet formatPackageWithPath removing')
-               $$
-               pptext (Fmt.sformat ("Forcing updates (from "%Fmt.stext%"):") 
-                                   (toTextIgnore cfgKeepAroundProfile))
-               $$ PP.nest 2 (formatSet formatUpd (keptUpdates r))
-               $$
-               pptext (Fmt.sformat ( "Ignored updates and reinstalls \
-                                      \(from "%Fmt.stext%"):") 
-                                    (toTextIgnore cfgKeepAroundProfile))
-               $$ PP.nest 2 (formatSet formatUpd (blockedUpdates r))
-            
-          formatSet f s | S.null s  = PP.text "<none>"
-                        | otherwise = PP.vcat . map (pptext . f) 
-                                      . S.toList $ s
-          pptext = PP.text . T.unpack
-          report cfg r = echo $ T.pack (PP.render (makeReport cfg r))
+
+  where finishMessage Config{..} = case cfgCommand of
+          DryRun -> "Dry run. Not doing anyting."
+          Build -> "Rebuild completed in profile "<> toTextIgnore cfgDestProfile
+          Switch -> "Rebuild done"
+
+        report cfg r = echo $ T.pack (PP.render (makeReport cfg r))
+
+makeReport Config{..} r = 
+  let (upds, install', removing') = 
+        filterUpds (installing r) (removing r)
+      versionUpdates = S.filter isStrictUpdate upds
+      reinstalls = S.map newPackage $ upds S.\\ versionUpdates
+      sourceReinstalls = S.filter (\Pwp{pwpStatus} -> pwpStatus == Source) 
+                                  reinstalls
+  in PP.text "Updating:" $$ PP.empty
+     $$ PP.nest 2 (formatSet formatUpd versionUpdates)
+     $$ PP.char ' ' $$
+     PP.text "Adding:" $$ PP.empty
+     $$ PP.nest 2 (formatSet formatPackageWithPath install')
+     $$ PP.char ' ' $$
+     PP.text "Reinstalling from source:" $$ PP.empty
+     $$ PP.nest 2 (formatSet formatPackageWithPath sourceReinstalls)
+     $$ PP.char ' ' $$
+     PP.text "Removing:" 
+     $$ PP.nest 2 (formatSet formatPackageWithPath removing')
+     $$
+     pptext (Fmt.sformat ("Forcing updates (from "%Fmt.stext%"):") 
+                         (toTextIgnore cfgKeepAroundProfile))
+     $$ PP.nest 2 (formatSet formatUpd (keptUpdates r))
+     $$
+     pptext (Fmt.sformat ( "Ignored updates and reinstalls \
+                            \(from "%Fmt.stext%"):") 
+                          (toTextIgnore cfgKeepAroundProfile))
+     $$ PP.nest 2 (formatSet formatUpd (blockedUpdates r))
   
-          finishMessage Config{..} = case cfgCommand of
-            DryRun -> "Dry run. Not doing anyting."
-            Build -> "Rebuild completed in profile "<> toTextIgnore cfgDestProfile
-            Switch -> "Rebuild done"
+  where formatSet f s | S.null s  = PP.text "<none>"
+                      | otherwise = PP.vcat . map (pptext . f) 
+                                    . S.toList $ s
+        pptext = PP.text . T.unpack
+
   
-data Upd = Upd { uName :: Package
-               , uOld :: Utils.PackageVersion 
-               , uOldPath :: StorePath
-               , uNew :: Utils.PackageVersion 
-               , uNewPath :: StorePath
-               , uStatus :: PkgStatus -- ^ the status of the new package
-               }
-  deriving (Eq, Ord, Show)
-  
-
-formatUpd :: Upd -> Text
-formatUpd Upd{uName, uOld, uNew, uStatus} = 
-  Fmt.sformat (""%Fmt.stext%" ("%Fmt.stext%" -> "%Fmt.stext%" "%Fmt.shown%")")
-              uName uOld uNew uStatus
-       
-oldPackage, newPackage :: Upd -> PackageWithPath
-oldPackage Upd{..} = Pwp { pwpPkg = VPkg{pName = uName, pVer = uOld}
-                         , pwpPath = uOldPath 
-                         , pwpStatus = Present }
-newPackage Upd{..} = Pwp { pwpPkg = VPkg{pName = uName, pVer = uNew}
-                         , pwpPath = uNewPath 
-                         , pwpStatus = uStatus 
-                         }
-
-filterUpds :: Set PackageWithPath -- ^ added packages
-           -> Set PackageWithPath -- ^ removed packages
-           -> (Set Upd, Set PackageWithPath, Set PackageWithPath)
-filterUpds fresh rem = (upds, fresh', removing')
-    where upds = S.fromList $
-                 [upd | fr <- S.toList fresh 
-                      , re <- S.toList rem
-                      , upd <- maybeToList $ findUpdate fr re
-                 ]
-          removing' = rem S.\\ S.map oldPackage upds 
-          fresh' = fresh S.\\ S.map newPackage upds
-
--- | Determine if an added package and a removed package form an update.
-findUpdate :: PackageWithPath -- ^ Added package
-           -> PackageWithPath -- ^ Removed package
-           -> Maybe Upd
-findUpdate ad re = mkUpd ad re
-  where mkUpd (Pwp { pwpPkg = (VPkg { pName = uName , pVer = uNew})
-                   , pwpPath = uNewPath
-                   , pwpStatus = uStatus
-                   }) 
-              (Pwp { pwpPkg = (VPkg { pName = n2, pVer =  uOld})
-                   , pwpPath = uOldPath
-                   }) 
-                | uName == n2  = Just (Upd {..})
-                | otherwise = Nothing
-  
-
-data Results = Results { rKept :: Set PackageWithPath
-                       , rDeclared :: Set PackageWithPath
-                       , rInstalled :: Set PackageWithPath }
-  deriving Show
-
-removing,installing,wantedFromDeclared, wantedFromKept :: Results -> Set PackageWithPath
-updatesFromKept, blockedUpdates, keptUpdates :: Results -> Set Upd
-removing r@Results{ rInstalled, rDeclared } = 
-  (rInstalled S.\\ rDeclared) S.\\ wantedFromKept r
-installing r@Results{ rInstalled } = 
-  (wantedFromDeclared r S.\\ rInstalled) 
-wantedFromDeclared r@Results{  rDeclared } = 
-  rDeclared S.\\ S.map newPackage (updatesFromKept r)
-wantedFromKept r = S.map (oldPackage) (updatesFromKept r)
-
-updatesFromKept Results{ rKept, rDeclared }  = us
-  where (us, _, _) = filterUpds rDeclared rKept
-  
-blockedUpdates r@Results{ rInstalled } = S.filter isNonTrivial us
-  where (us, _,_) = filterUpds (S.map newPackage (updatesFromKept r))
-                               rInstalled
-  
-keptUpdates Results{ rInstalled, rKept } = S.filter isNonTrivial us
-  where (us, _,_) = filterUpds rKept rInstalled
-
-isStrictUpdate, isReinstall, isNonTrivial :: Upd -> Bool
-isStrictUpdate Upd{uOld, uNew} = uOld /= uNew
-isReinstall Upd{..} = uOld == uNew && uOldPath /= uNewPath
-isNonTrivial u = isStrictUpdate u || isReinstall u
-
 getResults :: Config -> Sh Results
 getResults Config{..} = 
         Results <$> parseNix p_fromLocalQuery
@@ -266,40 +178,6 @@ getResults Config{..} =
                 <*> parseNix p_fromLocalQuery
                              (nixCmd (nixDefault NixQueryLocal))
         where parseNix p c = S.fromList <$> parseNixOutput p c
-
----------------------------
--- Types              
----------------------------
-type PackageName = Text
-type Package = Text
-type StorePath = Text
-data VersionedPackage = VPkg { pName :: PackageName
-                             , pVer :: Utils.PackageVersion 
-                             }
-  deriving (Eq, Ord, Show)
-  
-data PackageWithPath = Pwp { pwpPkg :: VersionedPackage
-                           , pwpStatus :: PkgStatus
-                           , pwpPath :: StorePath
-                           }
-  deriving (Eq, Ord, Show)
-  
-data PkgStatus = Present | Prebuilt | Source
-  deriving (Eq, Ord, Show)
-           
-parseVersionedPackage :: Package -> VersionedPackage
-parseVersionedPackage p = VPkg{..}
-  where (pName, pVer) = Utils.splitPackage p
-
-  
-formatVersionPackage :: VersionedPackage -> PackageName
-formatVersionPackage (VPkg {..}) = if T.null pVer 
-                                   then pName 
-                                   else pName <> "-" <> pVer
-
-formatPackageWithPath :: PackageWithPath -> PackageName
-formatPackageWithPath = formatVersionPackage . pwpPkg
-
 
 ---------------------------
 -- Running nix-env
