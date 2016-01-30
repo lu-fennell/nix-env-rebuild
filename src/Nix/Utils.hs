@@ -14,18 +14,14 @@ module Nix.Utils
        , basename
        , directory
        , fpText
-       , parseNixPatch
-       , applyNixPatch
-       , NixPatch(..)
        , runStderr
        , maybeOpt
        ) where
 
 import BasicPrelude hiding (FilePath, (</>), (<.>))
 import Shelly (Sh, get_env, toTextIgnore, runHandles, (-|-), run)
-import Options.Applicative hiding ((&))
+import Options.Applicative
 import Options.Applicative.Types (readerAsk)
-import Data.Traversable (sequenceA)
 import Control.Lens hiding ((<.>))
 import Data.Text.Lens
 import Filesystem.Path.CurrentOS ((</>), (<.>), FilePath)
@@ -52,7 +48,7 @@ fileReader = review fpText <$> textReader
 newtype Update' a = Update' { _runUpdate :: a -> Parser (State a ()) }
                     
 instance Monoid (Update' a) where
-  mempty = Update' $ \x -> pure (return ())
+  mempty = Update' $ \_ -> pure (return ())
   mappend (Update' f) (Update' g) = Update' $ \x -> liftA2 (>>) (f x) (g x)
   
 (<--) :: Show b => Lens' a b -> (ReadM b , Mod OptionFields b) -> Update' a
@@ -135,11 +131,13 @@ fpText = iso toTextIgnore FilePath.fromText
 -- !!!! cabal2nix (currently) produces. A real parser should be used
 -- !!!! for this.
                 
+{-
 data NixPatch = NixPatch { npDeclared :: [Text], npBody :: Text }
   deriving Show
 
 type ParseErrorMsg = Text
            
+
 parseNixPatch :: Text -> NixPatch
 parseNixPatch input = NixPatch declarations (Text.unlines bodyLines)
   where (declarationLines, bodyLines) = partition (declarePrefix `Text.isPrefixOf`) inputlines
@@ -160,7 +158,7 @@ applyNixPatch NixPatch{..} input = do
                          then " }:"
                          else ", "<>(Text.intercalate ", " npDeclared)<>" }:"
           in prefix <> lastline
-        patchLine oldargs l | "description =" `Text.isPrefixOf` (Text.strip l) =
+        patchLine _ l | "description =" `Text.isPrefixOf` (Text.strip l) =
           npBody <> "\n" <> l
         patchLine _ l       | otherwise = l
         extractArgs ls = do
@@ -169,7 +167,7 @@ applyNixPatch NixPatch{..} input = do
             [] -> fail ("Could not find argument list in\n" <> Text.unpack input)
             (args:_) -> return args
                                            
-
+-}
           
                                                 
                                                 

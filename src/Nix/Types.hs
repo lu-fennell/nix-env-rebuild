@@ -8,7 +8,6 @@ import qualified Data.Text as T
 import qualified Nix.Utils as Utils
 import Formatting ((%))
 import qualified Formatting as Fmt
-import Data.Set (Set)
 import qualified Data.Set as S
 
 -- -------------------------------------------------------------------
@@ -50,7 +49,6 @@ formatPackageWithPath = formatVersionPackage . pwpPkg
 -- -------------------------------------------------------------------
 -- Updates
 -- -------------------------------------------------------------------
-
 data Upd = Upd { uName :: Package
                , uOld :: Utils.PackageVersion 
                , uOldPath :: StorePath

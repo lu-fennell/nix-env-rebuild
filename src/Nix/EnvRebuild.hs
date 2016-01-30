@@ -4,19 +4,14 @@ module Nix.EnvRebuild where
 
 import BasicPrelude hiding (try, (</>), (<.>), FilePath, show, rem, takeWhile)
 import Control.Applicative.QQ.ADo
-import Control.Error
 import Control.Lens hiding (re)
-import Data.Char
-import Data.Function (on)
-import qualified Data.List as L
 import qualified Data.Text as T
 import Data.Text.Lens
 import Options.Applicative hiding (Parser)
 import qualified Options.Applicative as Opt
 import Prelude (show)
 import Shelly hiding (path)
-import Text.Show.Pretty
-import Text.PrettyPrint ((<+>), ($$), ($+$))
+import Text.PrettyPrint (($$))
 import qualified Text.PrettyPrint as PP
   
 
@@ -24,12 +19,8 @@ import qualified Data.Char as Char
 import Formatting ((%))
 import qualified Formatting as Fmt
 
-import Data.Set (Set)
 import qualified Data.Set as S
 
-import Test.Framework
-import Test.Framework.Providers.HUnit
-import Test.HUnit
 import Data.Attoparsec.Text
 
 import qualified Nix.Utils as Utils
@@ -132,6 +123,7 @@ main = shelly $ silently $ do
 
         report cfg r = echo $ T.pack (PP.render (makeReport cfg r))
 
+makeReport :: Config -> Results -> PP.Doc
 makeReport Config{..} r = 
   let (upds, install', removing') = 
         filterUpds (installing r) (removing r)

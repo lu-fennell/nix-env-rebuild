@@ -12,6 +12,7 @@ author: Luminous Fennell
 executable nix-env-rebuild
     main-is: Main.hs
     hs-source-dirs: src
+    ghc-options: -Wall
     build-depends:
         HUnit >=1.2,
         applicative-quoters >=0.1,
@@ -34,4 +35,5 @@ executable nix-env-rebuild
     other-modules:
         Nix.Utils
         Nix.EnvRebuild
+        Nix.Types
 
