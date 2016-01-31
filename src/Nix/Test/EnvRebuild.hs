@@ -15,8 +15,10 @@ import Test.HUnit
 
 import Data.Attoparsec.Text
 
-import Nix.EnvRebuild hiding (main)
 import Nix.Types
+import Nix.Commands
+import Utils
+import qualified Nix.OutputParser as P
 ---------------------------
 -- Tests
 ---------------------------
@@ -58,17 +60,17 @@ ex_someFetching =
   ] 
 
 test_someInstalling = testCase "installing" $
-  rights (fmap (parseOnly p_fromInstalling) ex_someInstalling)
+  rights (fmap (parseOnly P.fromInstalling) ex_someInstalling)
   @=?
   ["rxvt-unicode-9.16-with-perl","subversion-1.7.13","texlive-full"]
 
 test_someInstalling2 = testCase "installing2" $
-  rights (fmap (parseOnly p_fromInstalling) ex_someInstalling2)
+  rights (fmap (parseOnly P.fromInstalling) ex_someInstalling2)
   @=?
   ["rxvt-unicode-9.16-with-perl","subversion-1.7.13","texlive-full"]
   
 test_someUninstalling = testCase "uninstalling" $
-  rights (fmap (parseOnly p_fromUninstalling) ex_someUninstalling)
+  rights (fmap (parseOnly P.fromUninstalling) ex_someUninstalling)
   @=?
   [ "texlive-full"
   , "aspell-0.60.6.1"
@@ -77,13 +79,13 @@ test_someUninstalling = testCase "uninstalling" $
   ]
 
 test_someBuilding = testCase "building" $
-  rights (fmap (parseOnly p_fromBuilding) ex_someBuilding)
+  rights (fmap (parseOnly P.fromBuilding) ex_someBuilding)
   @=?
   ["haskell-env-ghc-7.6.3"]
 
   
 test_someFetched = testCase "fetching" $
-  rights (fmap (parseOnly p_fromFetching) ex_someFetching)
+  rights (fmap (parseOnly P.fromFetching) ex_someFetching)
   @=?
   [ "clucene-core-2.3.3.4"
   , "parcellite-1.1.6"
@@ -99,27 +101,27 @@ main = defaultMain
   , test_someFetched
   , testGroup "successfull parses" $
     [ testCase "local" $
-       parseOnly p_fromLocalQuery "clucene-core-2.3.3.4 /nix/store/bla"
+       parseOnly P.fromLocalQuery "clucene-core-2.3.3.4 /nix/store/bla"
        @?=
        Right (Just ("clucene-core-2.3.3.4", "/nix/store/bla", Present))
   
     , testCase "remote prebuilt" $
-       parseOnly p_fromRemoteQuery "--S clucene-core-2.3.3.4 /nix/store/bla"
+       parseOnly P.fromRemoteQuery "--S clucene-core-2.3.3.4 /nix/store/bla"
        @?=
        Right (Just ("clucene-core-2.3.3.4", "/nix/store/bla", Prebuilt))
 
     , testCase "remote source" $
-       parseOnly p_fromRemoteQuery "--- clucene-core-2.3.3.4 /nix/store/bla"
+       parseOnly P.fromRemoteQuery "--- clucene-core-2.3.3.4 /nix/store/bla"
        @?=
        Right (Just ("clucene-core-2.3.3.4", "/nix/store/bla", Source))
     ]
   , testGroup "failing parses" $
     [ testCase "missing path" $
-        (length . lefts . map (parseOnly p_fromQuery) 
+        (length . lefts . map (parseOnly P.fromQuery) 
           $ ["texlive-full   ", "texlive-full"])
         @?= 2
     , testCase "parse local with status" $
-       isLeft (parseOnly p_fromLocalQuery "--- clucene-core-2.3.3.4 /nix/store/bla")
+       isLeft (parseOnly P.fromLocalQuery "--- clucene-core-2.3.3.4 /nix/store/bla")
        @?=
        True
     ]
@@ -344,7 +346,7 @@ fromPackageList ps = S.fromList . map (mkOld . parseVersionedPackage) $ ps
 packageWithPathFromText s = 
   fromJustE ("packageWithPathFromText: no parse of "<>s) 
   . preview (_Right._Just) 
-  . parsePackageWithPath p_fromLocalQuery 
+  . P.parsePackageWithPath P.fromLocalQuery 
   $ s 
 
 mkUpd uName uOld uNew = Upd { uName, uOld, uNew

@@ -32,8 +32,9 @@ executable nix-env-rebuild
         text >=0.11
     other-modules:
         Utils
-        Nix.EnvRebuild
         Nix.Types
+        Nix.OutputParser
+        Nix.Commands
 
 test-suite nix-env-rebuild-tests
   type: exitcode-stdio-1.0
