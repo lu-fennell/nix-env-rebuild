@@ -23,6 +23,7 @@ import qualified Data.Set as S
 
 import Data.Attoparsec.Text
 
+import Utils ((<$/!>))
 import qualified Utils
 import Nix.Types
 
@@ -347,19 +348,5 @@ p_wouldInstall =  (Just <$> p_fromBuilding)
                <|> (Nothing <$ p_fromFetching) -- for now, ignore fetched packages
 p_wouldRemove = Just <$> p_fromUninstalling
 
-                
-
----------------------------
--- Utitilies               
----------------------------
-
-
-fromJustE :: Text -> Maybe b -> b
-fromJustE msg = fromMaybe (error $ msg^.unpacked)
-
-(<$/!>) :: Text -> FilePath -> Sh FilePath
-(<$/!>) var fp = (</> fp) . fromJustE msg <$> get_env var
-  where msg = "Unable to read `" <> var <> "'"
-     
 
 

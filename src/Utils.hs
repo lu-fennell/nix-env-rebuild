@@ -5,6 +5,8 @@ module Utils
        ( textReader
        , fileReader
        , getenv'
+       , fromJustE
+       , (<$/!>)
        -- | Lenses for FilePath
        , basename
        , directory
@@ -66,3 +68,11 @@ directory = lens FilePath.directory (\d p -> d </> FilePath.filename p)
           
 fpText :: Iso' FilePath Text
 fpText = iso toTextIgnore FilePath.fromText
+
+
+fromJustE :: Text -> Maybe b -> b
+fromJustE msg = fromMaybe (error $ msg^.unpacked)
+
+(<$/!>) :: Text -> FilePath -> Sh FilePath
+(<$/!>) var fp = (</> fp) . review fpText . fromJustE msg <$> get_env var
+  where msg = "Unable to read `" <> var <> "'"
