@@ -21,8 +21,6 @@ import Control.Lens hiding ((<.>))
 import Data.Text.Lens
 import Filesystem.Path.CurrentOS ((</>), (<.>), FilePath)
 import qualified Filesystem.Path.CurrentOS as FilePath
-import qualified Data.Text as Text
-import qualified Data.Char as Char
 import Data.Text.IO (hGetContents)
   
 default (Text)

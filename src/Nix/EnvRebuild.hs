@@ -32,7 +32,6 @@ default (Text)
 ---------------------------
 -- Configuration and command line parsing
 ---------------------------
-
 data Config = Config { cfgDeclaredPackages :: FilePath
                      , cfgKeepAroundProfile :: FilePath
                      , cfgDestProfile :: FilePath
@@ -123,6 +122,20 @@ main = shelly $ silently $ do
 
         report cfg r = echo $ T.pack (PP.render (makeReport cfg r))
 
+getResults :: Config -> Sh Results
+getResults Config{..} = 
+        Results <$> parseNix p_fromLocalQuery
+                             (nixCmd $ (nixDefault NixQueryLocal)
+                              { nixProfile = Just cfgKeepAroundProfile})
+                <*> parseNix p_fromRemoteQuery
+                             (nixCmd $ (nixDefault NixQueryRemote)
+                              { nixFile = Just cfgDeclaredPackages
+                              , nixProfile = Just cfgDestProfile })
+                <*> parseNix p_fromLocalQuery
+                             (nixCmd (nixDefault NixQueryLocal))
+        where parseNix p c = S.fromList <$> parseNixOutput p c
+
+
 makeReport :: Config -> Results -> PP.Doc
 makeReport Config{..} r = 
   let (upds, install', removing') = 
@@ -158,19 +171,6 @@ makeReport Config{..} r =
         pptext = PP.text . T.unpack
 
   
-getResults :: Config -> Sh Results
-getResults Config{..} = 
-        Results <$> parseNix p_fromLocalQuery
-                             (nixCmd $ (nixDefault NixQueryLocal)
-                              { nixProfile = Just cfgKeepAroundProfile})
-                <*> parseNix p_fromRemoteQuery
-                             (nixCmd $ (nixDefault NixQueryRemote)
-                              { nixFile = Just cfgDeclaredPackages
-                              , nixProfile = Just cfgDestProfile })
-                <*> parseNix p_fromLocalQuery
-                             (nixCmd (nixDefault NixQueryLocal))
-        where parseNix p c = S.fromList <$> parseNixOutput p c
-
 ---------------------------
 -- Running nix-env
 ---------------------------

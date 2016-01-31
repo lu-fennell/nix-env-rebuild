@@ -29,11 +29,33 @@ executable nix-env-rebuild
         pretty-show >=1.6,
         shelly >=1.5,
         system-filepath >=0.4,
-        test-framework >=0.8,
-        test-framework-hunit >=0.3,
         text >=0.11
     other-modules:
-        Nix.Utils
+        Utils
         Nix.EnvRebuild
         Nix.Types
+
+test-suite nix-env-rebuild-tests
+  type: exitcode-stdio-1.0
+  main-is: Nix/Test/EnvRebuild.hs
+  hs-source-dirs: src
+  build-depends:
+    test-framework >=0.8,
+    test-framework-hunit >=0.3,
+    HUnit >=1.2,
+    applicative-quoters >=0.1,
+    attoparsec >=0.10,
+    base >=4.6 && <4.9,
+    basic-prelude >=0.5,
+    containers >=0.5,
+    errors >=1.4,
+    formatting >=5.4,
+    lens >=4.1,
+    mtl >=2.1,
+    optparse-applicative >=0.11,
+    pretty >=1.1,
+    pretty-show >=1.6,
+    shelly >=1.5,
+    system-filepath >=0.4,
+    text >=0.11
 
