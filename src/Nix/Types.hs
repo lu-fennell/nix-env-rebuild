@@ -9,7 +9,10 @@ import qualified Data.Char as Char
 import Formatting ((%))
 import qualified Formatting as Fmt
 import qualified Data.Set as S
+import qualified Data.Map as M
 import Control.Lens
+
+import Utils 
 
 -- -------------------------------------------------------------------
 -- Packages
@@ -26,10 +29,10 @@ data VersionedPackage = VPkg { pName :: PackageName
   deriving (Eq, Ord, Show)
   
 data PackageWithPath = Pwp { pwpPkg :: VersionedPackage
-                           , pwpStatus :: PkgStatus
                            , pwpPath :: StorePath
                            }
   deriving (Eq, Ord, Show)
+
   
 data PkgStatus = Present | Prebuilt | Source
   deriving (Eq, Ord, Show)
@@ -73,34 +76,36 @@ formatUpd Upd{uName, uOld, uNew, uStatus} =
        
 oldPackage, newPackage :: Upd -> PackageWithPath
 oldPackage Upd{..} = Pwp { pwpPkg = VPkg{pName = uName, pVer = uOld}
-                         , pwpPath = uOldPath 
-                         , pwpStatus = Present }
+                         , pwpPath = uOldPath }
 newPackage Upd{..} = Pwp { pwpPkg = VPkg{pName = uName, pVer = uNew}
                          , pwpPath = uNewPath 
-                         , pwpStatus = uStatus 
+                         -- , pwpStatus = uStatus 
                          }
+newPackageAndStatus :: Upd -> (PackageWithPath, PkgStatus)
+newPackageAndStatus upd@Upd{..} = (newPackage upd, uStatus)
 
-filterUpds :: Set PackageWithPath -- ^ added packages
+
+calculateUpdates :: Map PackageWithPath PkgStatus -- ^ added packages
            -> Set PackageWithPath -- ^ removed packages
-           -> (Set Upd, Set PackageWithPath, Set PackageWithPath)
-filterUpds fresh removed = (upds, fresh', removing')
+           -> (Set Upd, Map PackageWithPath PkgStatus, Set PackageWithPath)
+calculateUpdates fresh removed = (upds, fresh', removing')
     where upds = S.fromList $
-                 [upd | f <- S.toList fresh 
+                 [upd | (f, status) <- M.assocs fresh 
                       , r <- S.toList removed
-                      , upd <- maybeToList $ findUpdate f r
+                      , upd <- maybeToList $ findUpdate (f, status) r
                  ]
           removing' = removed S.\\ S.map oldPackage upds 
-          fresh' = fresh S.\\ S.map newPackage upds
+          fresh' = removeKeys fresh (S.map newPackage upds)
 
 -- | Determine if an added package and a removed package form an update.
-findUpdate :: PackageWithPath -- ^ Added package
+findUpdate :: (PackageWithPath, PkgStatus) -- ^ Added package
            -> PackageWithPath -- ^ Removed package
            -> Maybe Upd
 findUpdate added removed = mkUpd added removed
-  where mkUpd (Pwp { pwpPkg = (VPkg { pName = uName , pVer = uNew})
-                   , pwpPath = uNewPath
-                   , pwpStatus = uStatus
-                   }) 
+  where mkUpd (Pwp { pwpPkg = (VPkg { pName = uName , pVer = uNew}) 
+                    , pwpPath = uNewPath
+                    }
+               , uStatus) 
               (Pwp { pwpPkg = (VPkg { pName = n2, pVer =  uOld})
                    , pwpPath = uOldPath
                    }) 
@@ -109,29 +114,33 @@ findUpdate added removed = mkUpd added removed
   
 
 data Results = Results { rKept :: Set PackageWithPath
-                       , rDeclared :: Set PackageWithPath
-                       , rInstalled :: Set PackageWithPath }
+                       , rDeclared :: Map PackageWithPath PkgStatus
+                       , rInstalled :: Map PackageWithPath PkgStatus }
   deriving Show
 
-removing,installing,wantedFromDeclared, wantedFromKept :: Results -> Set PackageWithPath
-updatesFromKept, blockedUpdates, keptUpdates :: Results -> Set Upd
+removing,installing,wantedFromDeclared :: Results -> Map PackageWithPath PkgStatus
 removing r@Results{ rInstalled, rDeclared } = 
-  (rInstalled S.\\ rDeclared) S.\\ wantedFromKept r
+  removeKeys (rInstalled M.\\ rDeclared) (wantedFromKept r)
 installing r@Results{ rInstalled } = 
-  (wantedFromDeclared r S.\\ rInstalled) 
+  (wantedFromDeclared r M.\\ rInstalled) 
 wantedFromDeclared r@Results{  rDeclared } = 
-  rDeclared S.\\ S.map newPackage (updatesFromKept r)
+  removeKeys rDeclared (S.map newPackage (updatesFromKept r))
+
+wantedFromKept :: Results -> Set PackageWithPath
 wantedFromKept r = S.map (oldPackage) (updatesFromKept r)
 
+updatesFromKept, blockedUpdates :: Results -> Set Upd
 updatesFromKept Results{ rKept, rDeclared }  = us
-  where (us, _, _) = filterUpds rDeclared rKept
-  
+  where (us, _, _) = calculateUpdates rDeclared rKept
 blockedUpdates r@Results{ rInstalled } = S.filter isNonTrivial us
-  where (us, _,_) = filterUpds (S.map newPackage (updatesFromKept r))
-                               rInstalled
-  
+  where (us, _,_) = calculateUpdates 
+                      (M.fromList . map newPackageAndStatus . S.toList $ updatesFromKept r)
+                      (M.keysSet rInstalled)
+keptUpdates :: Results -> Set Upd
 keptUpdates Results{ rInstalled, rKept } = S.filter isNonTrivial us
-  where (us, _,_) = filterUpds rKept rInstalled
+  where (us, _,_) = calculateUpdates (addStorePathStatus rKept) (M.keysSet rInstalled)
+        -- TODO: actually rKept could have a proper status from the start
+        addStorePathStatus = M.fromSet (const Present) 
 
 isStrictUpdate, isReinstall, isNonTrivial :: Upd -> Bool
 isStrictUpdate Upd{uOld, uNew} = uOld /= uNew

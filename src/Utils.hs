@@ -13,6 +13,7 @@ module Utils
        , fpText
        , runStderr
        , maybeOpt
+       , removeKeys
        ) where
 
 import BasicPrelude hiding (FilePath, (</>), (<.>))
@@ -23,6 +24,8 @@ import Control.Lens hiding ((<.>))
 import Data.Text.Lens
 import Filesystem.Path.CurrentOS ((</>), (<.>), FilePath)
 import qualified Filesystem.Path.CurrentOS as FilePath
+import qualified Data.Set as Set
+import qualified Data.Map as Map
 import Data.Text.IO (hGetContents)
   
 default (Text)
@@ -53,6 +56,9 @@ runStderr p args = runHandles p args [] $ \_ _ h -> liftIO (hGetContents h) -|- 
 
 maybeOpt :: Text -> Maybe FilePath -> [Text]
 maybeOpt opt = maybe [] (\p -> [opt, toTextIgnore p])
+
+removeKeys :: (Eq a, Ord a) => Map a b -> Set a -> Map a b
+removeKeys m s = Set.foldl' (\m k -> Map.delete k m) m s
 
 -- -------------------------------------------------------------------
 -- Filepath lenses

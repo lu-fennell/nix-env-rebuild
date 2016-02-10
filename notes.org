@@ -1,22 +1,46 @@
 * DONE nix-env-rebuild: split off into its own package
 * DONE Remove nix-env-rebuild from nix-tools
 * TODO Blocker for first release
-** TODO Clean up the code
-** TODO Clean up Utils.hs
-** TODO Document "keep-around"
-what is it supposed to do, actually?
-including test-only dependencies
-** TODO Make cabal file aware of tests
-** TODO Catch Shelly exceptions when run in "production"
-and give error messages that do not reveal implementation details
-(like shelly's command history traces)
+** DONE Clean up the code
+** DONE Clean up Utils.hs
+** TODO Implement a syntax for specifying keep around packages
+- analogue to builtins.storePath...
+- Simple version
+  - specify store paths in a file separate file (store-paths.nix), or
+    attribute ((import packages.nix).store-paths)
+  - save the store paths in dedicated profile
+  - +solve conflicts somehow_+ use it as keep around packages
+- How to use keep-around profile? A temparary profile?
+  - temp
+    - where would the packages be stored? user profile is too risky!
+      deleting a path by accident would make keep-around stuff
+      vulnerable for gc
+  - cache
+    - How to parse kept packages? just from the store path! 
+      - [ ] Refactor so that kept packages do not need status (they
+        shouldn't actually)
+      - [ ] parse the list of store paths
+      - [ ] install to cache only when not dryrunning
+** TODO Change "updateing" in output to "changeing" (or "building"?)
+** TODO Remove packages from cache profiles to keep polution of gc roots low
+** TODO Clean errors about wtrong config options (?)
+** TODO Check out if other (nix) errors are readable
+** TODO Fix todos
+** DONE Make cabal file aware of tests
 ** TODO Readme.md
 ** TODO Print status, not custom "availability"
+* TODO Future
 ** TODO Implement "Availability"/Status
 - parse the "will be built" output
 - count the source packages
 - when verbose, list them
-* TODO Future
+** TODO Catch Shelly exceptions when run in "production"
+and give error messages that do not reveal implementation details
+(like shelly's command history traces)
+** TODO Code cleanup [/]
+- [ ] field names of records: fix field names of the Results record
+  (e.g. renamed -> renaming)
+** TODO Allow to add store paths to the package collection
 ** TODO Set upper bounds
 preferably with a script that reads the current haskellPackages versions
 ** TODO Remove "formatting" dep in favor of "printf-th"
@@ -24,6 +48,7 @@ preferably with a script that reads the current haskellPackages versions
 Either manage it declaratively and sync the "spec" or sync profiles somehow
 ** TODO Support -b flag
 that only updates downloadable stuff
+** TODO Show which packages are available in system
 * DONE Allow to declare nixpkgs location
 * DONE nix-env-rebuild: implement things as commands
 - dry-run (now without args)

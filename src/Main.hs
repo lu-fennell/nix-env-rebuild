@@ -7,7 +7,6 @@ import Control.Applicative.QQ.ADo
 import qualified Data.Text as T
 import Options.Applicative hiding (Parser)
 import qualified Options.Applicative as Opt
-import Prelude (show)
 import Shelly hiding (path)
 import Text.PrettyPrint (($$))
 import qualified Text.PrettyPrint as PP
@@ -17,6 +16,7 @@ import Formatting ((%))
 import qualified Formatting as Fmt
 
 import qualified Data.Set as S
+import qualified Data.Map as M
 
 import Utils ((<$/!>))
 import qualified Utils
@@ -42,10 +42,11 @@ data Command = DryRun | Build | Switch
 
   
 -- default locations
-readDeclaredPackages, readKeepAroundProfile, readDestProfile :: Sh FilePath
+readDeclaredPackages, readKeepAroundProfile, readDestProfile, readOutPathList :: Sh FilePath
 readDeclaredPackages = "HOME" <$/!> ".nixpkgs/packages.nix" 
 readKeepAroundProfile = "NIX_USER_PROFILE_DIR" <$/!> "keep-around"
 readDestProfile = "NIX_USER_PROFILE_DIR" <$/!> "nix-rebuild-cache"
+readOutPathList = "HOME" <$/!> ".nixpkgs/store-path-install-list.txt"
                       
 tmpProfileName :: Text
 tmpProfileName = "tmp-nix-rebuild-profile"
@@ -54,6 +55,7 @@ getConfig :: Sh (Opt)
 getConfig = do
    declaredPackages <- readDeclaredPackages 
    keepAroundProfile <- readKeepAroundProfile 
+   outPathList <- readOutPathList
    destProfile <- readDestProfile
    let flags :: Opt.Parser (Opt)
        flags = [ado|
@@ -61,13 +63,20 @@ getConfig = do
                      (long "packages"
                       <> metavar "FILE"
                       <> value declaredPackages <> showDefault
-                      <> help "File declaring the set of packages that should be installed (as a nix list)")
+                      <> help "File containing the list of packages to be installed. \
+                              \It should contain a nix-expression evaluating to a list of derivations \ 
+                              \(as for: nix-env -i -f FILE)")
+                   cfgDeclaredOutPaths <- Opt.option Utils.fileReader
+                     (long "out-path-list"
+                     <> value outPathList <> showDefault
+                     <> help "File containing the list of store-path to be installed, \
+                             \one store path per line."
+                     )
                    cfgKeepAroundProfile <- Opt.option Utils.fileReader 
                      (long "keep-profile"
                      <> metavar "DIR"
                      <> value keepAroundProfile <> showDefault
-                     <> help "Profile with installed packages. \
-                             \These packages take precedence over packages with the same name in nixpkgs")
+                     <> help "Profile for caching the outputs store paths. Store paths listed in ")
                    cfgDestProfile <- Opt.option Utils.fileReader
                      (long "cache-profile"
                      <> metavar "DIR"
@@ -87,9 +96,12 @@ getConfig = do
                      <|>
                      pure DryRun
                    
-                   Opt {  optCfg = Config { cfgDeclaredPackages = cfgDeclaredPackages
-                          , cfgKeepAroundProfile = cfgKeepAroundProfile
-                          , cfgDestProfile = cfgDestProfile }
+                   Opt {  optCfg = Config { 
+                              cfgDeclaredPackages = cfgDeclaredPackages
+                            , cfgDeclaredOutPaths = cfgDeclaredOutPaths
+                            , cfgKeepAroundProfile = cfgKeepAroundProfile
+                            , cfgDestProfile = cfgDestProfile 
+                          }
                           , optCommand = optCommand
                           , optVerbose = optVerbose 
                           } 
@@ -120,35 +132,42 @@ main = shelly $ silently $ do
         report cfg r = echo $ T.pack (PP.render (makeReport cfg r))
 
 getResults :: Config -> Sh Results
-getResults Config{..} = 
-        Results <$> parseNix P.fromLocalQuery
-                             (nixCmd $ (nixDefault NixQueryLocal)
-                              { nixProfile = Just cfgKeepAroundProfile})
-                <*> parseNix P.fromRemoteQuery
+getResults Config{..} = do
+           rKept <- getStorePaths cfgKeepAroundProfile cfgDeclaredOutPaths
+           rDeclared <- fmap (M.fromList . S.toList) $ parseNix P.fromRemoteQuery
                              (nixCmd $ (nixDefault NixQueryRemote)
                               { nixFile = Just cfgDeclaredPackages
                               , nixProfile = Just cfgDestProfile })
-                <*> parseNix P.fromLocalQuery
+           rInstalled <- fmap (M.fromList . S.toList) $ parseNix P.fromLocalQuery
                              (nixCmd (nixDefault NixQueryLocal))
+
+           return Results{..}
         where parseNix p c = S.fromList <$> P.parseNixOutput p c
 
+-- TODO: read store paths from declared out-paths
+getStorePaths :: FilePath -> FilePath -> Sh (Set PackageWithPath)
+getStorePaths keepAroundProfile declaredOutPaths =
+  fmap (S.map fst) $ parseNix P.fromLocalQuery
+        (nixCmd $ (nixDefault NixQueryLocal)
+        { nixProfile = Just keepAroundProfile})
+  where parseNix p c = S.fromList <$> P.parseNixOutput p c
 
 makeReport :: Config -> Results -> PP.Doc
 makeReport Config{..} r = 
   let (upds, install', removing') = 
-        filterUpds (installing r) (removing r)
+        calculateUpdates (installing r) (M.keysSet . removing $ r)
       versionUpdates = S.filter isStrictUpdate upds
-      reinstalls = S.map newPackage $ upds S.\\ versionUpdates
-      sourceReinstalls = S.filter (\Pwp{pwpStatus} -> pwpStatus == Source) 
+      reinstalls = S.map newPackageAndStatus $ upds S.\\ versionUpdates
+      sourceReinstalls = S.filter (\(_, pwpStatus) -> pwpStatus == Source) 
                                   reinstalls
   in PP.text "Updating:" $$ PP.empty
      $$ PP.nest 2 (formatSet formatUpd versionUpdates)
      $$ PP.char ' ' $$
      PP.text "Adding:" $$ PP.empty
-     $$ PP.nest 2 (formatSet formatPackageWithPath install')
+     $$ PP.nest 2 (formatSet formatPackageWithPath . M.keysSet $ install')
      $$ PP.char ' ' $$
      PP.text "Reinstalling from source:" $$ PP.empty
-     $$ PP.nest 2 (formatSet formatPackageWithPath sourceReinstalls)
+     $$ PP.nest 2 (formatSet formatPackageWithPath . S.map fst $ sourceReinstalls)
      $$ PP.char ' ' $$
      PP.text "Removing:" 
      $$ PP.nest 2 (formatSet formatPackageWithPath removing')
@@ -173,9 +192,9 @@ makeReport Config{..} r =
 ---------------------------
 doInstall :: Opt -> Results -> Sh ()
 doInstall Opt{..} r = do
-  -- TODO: clean up this if-then-else mess.. what commands to run should be specified on by the input to nixCmd
   nixCmdCfgExecute $ removePackages optCfg
-  pkgCmd "package list" installPackages $ map formatPackageWithPath $ S.toList $ wantedFromDeclared r
+  pkgCmd "package list" installPackages . map formatPackageWithPath . S.toList . M.keysSet . wantedFromDeclared $ r
+  echo_err "WARNING: would install wantedPackages to keep-around profile. NOT IMPLEMENTED."
   pkgCmd "keep-around packages" installKeep $ map formatPackageWithPath $ S.toList $ wantedFromKept r
   when (optCommand == Switch) $ do
     nixCmdCfgExecute $ switchToNewPackages optCfg

@@ -4,13 +4,12 @@ module Nix.Commands where
 
 import BasicPrelude hiding (try, (</>), (<.>), FilePath, rem, takeWhile)
 import Shelly hiding (path)
-import qualified Data.Set as S
 import qualified Data.Text as Text
 
-import Nix.Types
 import Utils
 
 data Config = Config { cfgDeclaredPackages :: FilePath
+                     , cfgDeclaredOutPaths :: FilePath
                      , cfgKeepAroundProfile :: FilePath
                      , cfgDestProfile :: FilePath
      }
@@ -64,6 +63,7 @@ nixCmdArgs NixQueryLocal = ["-q", "--out-path"]
 nixCmdArgs NixQueryRemote = ["-qa", "--out-path", "--status"]
 
         
+-- | Default, dry-run version of a nix command.
 nixDefault :: NixCmd -> Nix
 nixDefault nixcmd = Nix nixcmd Nothing True Nothing Nothing
            

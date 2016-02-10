@@ -6,6 +6,7 @@ import BasicPrelude hiding ((</>), (<.>), FilePath)
 import Filesystem.Path.CurrentOS
 import Data.Set (Set)
 import qualified Data.Set as S
+import qualified Data.Map as M
 import Control.Error
 import Control.Lens
 
@@ -79,13 +80,13 @@ test_someUninstalling = testCase "uninstalling" $
   ]
 
 test_someBuilding = testCase "building" $
-  rights (fmap (parseOnly P.fromBuilding) ex_someBuilding)
+  rights (fmap (parseOnly p_fromBuilding) ex_someBuilding)
   @=?
   ["haskell-env-ghc-7.6.3"]
 
   
 test_someFetched = testCase "fetching" $
-  rights (fmap (parseOnly P.fromFetching) ex_someFetching)
+  rights (fmap (parseOnly p_fromFetching) ex_someFetching)
   @=?
   [ "clucene-core-2.3.3.4"
   , "parcellite-1.1.6"
@@ -189,13 +190,14 @@ main = defaultMain
     [ 
       testCase "match1" $
       findUpdate' "cabal2nix-1.60" "cabal2nix-1.58" 
-      @?= Just (mkUpd "cabal2nix" "1.58" "1.60")
+      @?= Just (mkUpd ("cabal2nix", "1.58", "1.60"))
 
     , testCase "match2" $
       findUpdate' "git-full-1.9.0 /nix/store/bla1" "git-1.8.5.2-full /nix/store/bla2" @?= Nothing
 
     , testCase "match3" $
-      findUpdate' "git-annex-5.20140306" "git-annex-5.20140108" @?= Just (mkUpd "git-annex" "5.20140108" "5.20140306")
+      findUpdate' "git-annex-5.20140306" "git-annex-5.20140108" 
+      @?= Just (mkUpd ("git-annex", "5.20140108", "5.20140306"))
 
     , testCase "no match" $
       findUpdate' "git-1.8.5.2-full" "giti-full-1.9.0" @?= Nothing
@@ -204,61 +206,56 @@ main = defaultMain
       findUpdate' "git-1.9.4"  "git-annex-5.20140717" @?= Nothing
 
     , testCase "filterUpd" $
-      filterUpds (S.map mkNew (S.fromList $ map parseVersionedPackage
+      calculateUpdatesFromLists 
                     [ "cabal2nix-1.60"
                     , "duplicity-0.6.23"
                     , "feh-2.10"
                     , "git-annex-5.20140306"
-                    ]) )
-                (S.map mkOld (S.fromList $ map parseVersionedPackage
+                    ]
                    [ "git-annex-5.20140108"
                    , "cabal-dev-0.9.2"
                    , "cabal2nix-1.58"
                    , "duplicity-0.6.22"
                    , "exif-0.6.21" 
-                   ]))
-      @?= (S.fromList 
-            [ (mkUpd "cabal2nix" "1.58" "1.60")
-              , (mkUpd "duplicity" "0.6.22" "0.6.23")
-              , (mkUpd "git-annex" "5.20140108" "5.20140306")
+                   ]
+      @?= expectedUpdates 
+            [ ("cabal2nix", "1.58", "1.60")
+              , ("duplicity", "0.6.22", "0.6.23")
+              , ("git-annex", "5.20140108", "5.20140306")
             ]
-          ,S.fromList  $ map (mkNew . parseVersionedPackage) ["feh-2.10"]
-          ,S.fromList $ map (mkOld . parseVersionedPackage)
-                      [ "cabal-dev-0.9.2"
-                      , "exif-0.6.21"
-                      ])
+           ["feh-2.10"]
+           [ "cabal-dev-0.9.2"
+            , "exif-0.6.21"
+            ]
 
     , testCase "filterUpd_same_prefixes" $
-      filterUpds (S.fromList  $ map (mkNew . parseVersionedPackage)
+      calculateUpdatesFromLists 
                     [ "cabal2nix-1.60"
                     , "duplicity-0.6.23"
                     , "feh-2.10"
                     , "git-2.0"
                     , "git-annex-5.20140306"
-                    ])
-                (S.fromList $ map (mkOld . parseVersionedPackage)
+                    ]
                    [ "git-annex-5.20140108"
                    , "cabal-dev-0.9.2"
                    , "cabal2nix-1.58"
                    , "duplicity-0.6.22"
                     , "git-1.8"
                    , "exif-0.6.21" 
-                   ])
-      @?= (S.fromList 
-            [ (mkUpd "cabal2nix" "1.58" "1.60")
-              , (mkUpd "duplicity" "0.6.22" "0.6.23")
-              , (mkUpd "git-annex" "5.20140108" "5.20140306")
-              , (mkUpd "git" "1.8" "2.0")
+                   ]
+      @?= expectedUpdates
+            [   ("cabal2nix", "1.58" ,"1.60")
+              , ("duplicity", "0.6.22" ,"0.6.23")
+              , ("git-annex", "5.20140108", "5.20140306")
+              , ("git", "1.8", "2.0")
             ]
-          ,S.fromList $ map (mkNew . parseVersionedPackage) ["feh-2.10"]
-          ,S.fromList $ map (mkOld . parseVersionedPackage) [ "cabal-dev-0.9.2"
-                      , "exif-0.6.21"
-                      ])
+            ["feh-2.10"]
+            [ "cabal-dev-0.9.2" , "exif-0.6.21"]
      , testCase "unversioned" $
        let texliveOld = packageWithPathFromText "texlive-full /nix/store/bla1"
            texliveNew = packageWithPathFromText "texlive-full /nix/store/bla2"
-       in (view _1 $ filterUpds (S.fromList [texliveNew])
-                                (S.fromList [texliveOld])
+       in (view _1 $ calculateUpdates (M.fromList [texliveNew])
+                                (S.fromList [fst texliveOld])
           ) @?= S.fromList [ Upd { uName = "texlive-full" 
                                  , uOld = "" 
                                  , uOldPath = "/nix/store/bla1"           
@@ -271,14 +268,14 @@ main = defaultMain
 
   , testGroup "Result views"
     [ testCase "removing" $
-      removing ex_result1 @?= fromPackageList ["remove-me-1", "somepackage-1.1.2"]
+      removing ex_result1 @?= fromPackageListWithStatus ["remove-me-1", "somepackage-1.1.2"]
 
     , testCase "install fresh" $
-      installing ex_result1 @?= fromPackageList ["newpackage-1", "somepackage-1.1.1"]
+      installing ex_result1 @?= fromPackageListWithStatus ["newpackage-1", "somepackage-1.1.1"]
 
     , testCase "wantedFromDeclared" $
       wantedFromDeclared ex_result1 
-      @?= fromPackageList ["newpackage-1", "somepackage-1.1.1"]
+      @?= fromPackageListWithStatus["newpackage-1", "somepackage-1.1.1"]
 
     , testCase "wantedFromKept" $
       wantedFromKept ex_result1 @?= fromPackageList [ "libreoffice-2.3"
@@ -287,15 +284,14 @@ main = defaultMain
                                                     ]
     , testCase "unversioned updates" $
       installing ex_texliveResults
-      @?= S.fromList 
-          [ Pwp { pwpPkg =  VPkg { pName = "texlive-full" , pVer = ""}
+      @?= M.fromList 
+          [ (Pwp { pwpPkg =  VPkg { pName = "texlive-full" , pVer = ""}
                 , pwpPath = "/nix/store/lynr5fvcpp21rzjaz1ahjzn1zd7r0dkr-TeXLive-linkdir"
-                , pwpStatus = Present
-                }
+                }, Present)
           ]
   
     , testCase "unversioned blocked updates" $
-      blockedUpdates (ex_texliveResults { rKept = rInstalled ex_texliveResults })
+      blockedUpdates (ex_texliveResults { rKept = M.keysSet (rInstalled ex_texliveResults) })
       @?= S.fromList
           [ Upd { uName =  "texlive-full" 
                 , uOld = ""
@@ -314,26 +310,26 @@ ex_result1 = Results { rKept = S.fromList $ map (mkOld . parseVersionedPackage)
                                , "emacs-24"
                                , "not-wanted-222"
                                ]
-                     , rDeclared = S.fromList $ map (mkOld . parseVersionedPackage)
+                     , rDeclared = M.fromList $ map (addPresentStatus . mkOld . parseVersionedPackage)
                                    [ "libreoffice-2.4"
                                    , "somepackage-1.1.1"
                                    , "newpackage-1"
                                    , "Agda-3.4"
                                    , "emacs-25"
                                    ]
-                     , rInstalled = S.fromList $ map (mkOld . parseVersionedPackage)
+                     , rInstalled = M.fromList $ map (addPresentStatus . mkOld . parseVersionedPackage)
                                     [ "libreoffice-2.4"
                                     , "somepackage-1.1.2"
                                     , "remove-me-1"
                                     ]
                      }
 ex_texliveResults = Results { rKept = S.empty
-                          , rDeclared  = S.fromList 
-                                         . map packageWithPathFromText
+                          , rDeclared  = M.fromList 
+                                         . map (packageWithPathFromText)
                                          $ [ "texlive-full  /nix/store/lynr5fvcpp21rzjaz1ahjzn1zd7r0dkr-TeXLive-linkdir"
                                            ]
-                          , rInstalled  = S.fromList 
-                                         . map packageWithPathFromText
+                          , rInstalled  = M.fromList 
+                                         . map (packageWithPathFromText)
                                          $ [ "texlive-full  /nix/store/4lyy252ablh9snx5cr4dvfic0k0fcr0y-TeXLive-linkdir"
                                            ]
                           }
@@ -342,6 +338,7 @@ ex_texliveResults = Results { rKept = S.empty
 findUpdate' p1 p2 = findUpdate (mkNew . parseVersionedPackage $ p1) 
                                (mkOld . parseVersionedPackage $ p2)
 
+fromPackageListWithStatus ps = M.fromList . map (addPresentStatus . mkOld . parseVersionedPackage) $ ps
 fromPackageList ps = S.fromList . map (mkOld . parseVersionedPackage) $ ps
 packageWithPathFromText s = 
   fromJustE ("packageWithPathFromText: no parse of "<>s) 
@@ -349,9 +346,28 @@ packageWithPathFromText s =
   . P.parsePackageWithPath P.fromLocalQuery 
   $ s 
 
-mkUpd uName uOld uNew = Upd { uName, uOld, uNew
+mkUpd (uName, uOld, uNew) = Upd { uName, uOld, uNew
                             , uOldPath = "/nix/store/bl1"
                             , uNewPath = "/nix/store/bl2" 
                             , uStatus = Present }
-mkOld vpkg = Pwp { pwpPkg = vpkg, pwpPath = "/nix/store/bl1", pwpStatus = Present}
-mkNew vpkg = Pwp { pwpPkg = vpkg, pwpPath = "/nix/store/bl2", pwpStatus = Present }
+mkOld vpkg = Pwp { pwpPkg = vpkg, pwpPath = "/nix/store/bl1"}
+mkNew vpkg = (Pwp { pwpPkg = vpkg, pwpPath = "/nix/store/bl2"} , Present )
+
+mkNewPackages = M.fromList . map (mkNew . parseVersionedPackage)
+mkOldPackages = S.fromList . map (mkOld . parseVersionedPackage)
+
+p_fromBuilding = P.fromBuilding "/nix/store"
+p_fromFetching = P.fromFetching "/nix/store"
+
+calculateUpdatesFromLists news olds = 
+  calculateUpdates (mkNewPackages news)
+                   (mkOldPackages olds)
+
+expectedUpdates :: [(Text, Text, Text)] -> [Text] -> [Text]
+                -> (Set Upd, Map PackageWithPath PkgStatus, Set PackageWithPath)
+expectedUpdates upds added removed =
+  ( S.fromList . map mkUpd $ upds
+  , mkNewPackages added
+  , mkOldPackages removed )
+
+addPresentStatus p = (p, Present)
