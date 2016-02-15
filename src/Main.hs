@@ -10,6 +10,8 @@ import qualified Options.Applicative as Opt
 import Shelly hiding (path)
 import Text.PrettyPrint (($$))
 import qualified Text.PrettyPrint as PP
+import Data.Attoparsec.Text as Attoparsec
+import Control.Lens
   
 
 import Formatting ((%))
@@ -76,12 +78,18 @@ getConfig = do
                      (long "keep-profile"
                      <> metavar "DIR"
                      <> value keepAroundProfile <> showDefault
-                     <> help "Profile for caching the outputs store paths. Store paths listed in ")
+                     <> help "Profile for caching the output store paths. Store paths listed in ")
                    cfgDestProfile <- Opt.option Utils.fileReader
                      (long "cache-profile"
                      <> metavar "DIR"
                      <> value destProfile <> showDefault
                      <> help "Profile to store the build result into"
+                     )
+                   cfgStoreDir <- Opt.option Utils.fileReader
+                     (long "store-dir"
+                     <> metavar "DIR"
+                     <> value "/nix/store" <> showDefault
+                     <> help "Directory of the nix store"
                      )
                    optVerbose <- flag False True 
                      (long "verbose" <> short 'v'
@@ -101,6 +109,7 @@ getConfig = do
                             , cfgDeclaredOutPaths = cfgDeclaredOutPaths
                             , cfgKeepAroundProfile = cfgKeepAroundProfile
                             , cfgDestProfile = cfgDestProfile 
+                            , cfgStoreDir = cfgStoreDir
                           }
                           , optCommand = optCommand
                           , optVerbose = optVerbose 
@@ -132,8 +141,8 @@ main = shelly $ silently $ do
         report cfg r = echo $ T.pack (PP.render (makeReport cfg r))
 
 getResults :: Config -> Sh Results
-getResults Config{..} = do
-           rKept <- getStorePaths cfgKeepAroundProfile cfgDeclaredOutPaths
+getResults cfg@Config{..} = do
+           rKept <- getStorePaths cfg
            rDeclared <- fmap (M.fromList . S.toList) $ parseNix P.fromRemoteQuery
                              (nixCmd $ (nixDefault NixQueryRemote)
                               { nixFile = Just cfgDeclaredPackages
@@ -145,12 +154,19 @@ getResults Config{..} = do
         where parseNix p c = S.fromList <$> P.parseNixOutput p c
 
 -- TODO: read store paths from declared out-paths
-getStorePaths :: FilePath -> FilePath -> Sh (Set PackageWithPath)
-getStorePaths keepAroundProfile declaredOutPaths =
-  fmap (S.map fst) $ parseNix P.fromLocalQuery
-        (nixCmd $ (nixDefault NixQueryLocal)
-        { nixProfile = Just keepAroundProfile})
-  where parseNix p c = S.fromList <$> P.parseNixOutput p c
+-- TODO: should probably move to another module (Command.hs?)
+getStorePaths :: Config -> Sh (Set PackageWithPath)
+getStorePaths Config{..} = do
+  paths <- fmap (map T.strip . T.lines) . readfile $ cfgDeclaredOutPaths
+  fmap S.fromList . mapM (\p -> addStoreDir p =<< (parsePackageFromPath p)) $ paths
+  where parsePackageFromPath = Utils.fromJustThrow 
+                               . fmap parseVersionedPackage 
+                               . Attoparsec.parseOnly (P.fromStorePath "" takeText) 
+                                                      -- out paths are given relative to the store dir 
+                                                      -- TODO: move this parser in the OutputParser module
+        addStoreDir path p = return $ Pwp { pwpPkg = p
+                                          , pwpPath = over (from Utils.fpText) (cfgStoreDir</>) path 
+                                          }
 
 makeReport :: Config -> Results -> PP.Doc
 makeReport Config{..} r = 

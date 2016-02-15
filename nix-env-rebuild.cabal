@@ -21,6 +21,7 @@ executable nix-env-rebuild
         basic-prelude >=0.5,
         containers >=0.5,
         errors >=1.4,
+        exceptions >=0.8,
         formatting >=5.4,
         lens >=4.1,
         mtl >=2.1,

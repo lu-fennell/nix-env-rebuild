@@ -1,8 +1,6 @@
 * DONE nix-env-rebuild: split off into its own package
 * DONE Remove nix-env-rebuild from nix-tools
 * TODO Blocker for first release
-** DONE Clean up the code
-** DONE Clean up Utils.hs
 ** TODO Implement a syntax for specifying keep around packages
 - analogue to builtins.storePath...
 - Simple version
@@ -17,18 +15,21 @@
       vulnerable for gc
   - cache
     - How to parse kept packages? just from the store path! 
-      - [ ] Refactor so that kept packages do not need status (they
+      - [X] Refactor so that kept packages do not need status (they
         shouldn't actually)
-      - [ ] parse the list of store paths
+      - [X] parse the list of store paths
+      - [ ] test
       - [ ] install to cache only when not dryrunning
 ** TODO Change "updateing" in output to "changeing" (or "building"?)
 ** TODO Remove packages from cache profiles to keep polution of gc roots low
-** TODO Clean errors about wtrong config options (?)
-** TODO Check out if other (nix) errors are readable
+** TODO Clean errors about wrong config options (?)
+** TODO Check out if other (nix) errors are readable/understandable
 ** TODO Fix todos
-** DONE Make cabal file aware of tests
 ** TODO Readme.md
 ** TODO Print status, not custom "availability"
+** DONE Clean up the code
+** DONE Clean up Utils.hs
+** DONE Make cabal file aware of tests
 * TODO Future
 ** TODO Implement "Availability"/Status
 - parse the "will be built" output

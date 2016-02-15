@@ -6,6 +6,7 @@ module Utils
        , fileReader
        , getenv'
        , fromJustE
+       , fromJustThrow
        , (<$/!>)
        -- | Lenses for FilePath
        , basename
@@ -21,6 +22,7 @@ import Shelly (Sh, get_env, toTextIgnore, runHandles, (-|-), run)
 import Options.Applicative
 import Options.Applicative.Types (readerAsk)
 import Control.Lens hiding ((<.>))
+import Control.Monad.Catch
 import Data.Text.Lens
 import Filesystem.Path.CurrentOS ((</>), (<.>), FilePath)
 import qualified Filesystem.Path.CurrentOS as FilePath
@@ -78,6 +80,10 @@ fpText = iso toTextIgnore FilePath.fromText
 
 fromJustE :: Text -> Maybe b -> b
 fromJustE msg = fromMaybe (error $ msg^.unpacked)
+
+fromJustThrow :: MonadThrow m => Either String a -> m a
+fromJustThrow = either (throwM . userError) return
+          
 
 (<$/!>) :: Text -> FilePath -> Sh FilePath
 (<$/!>) var fp = (</> fp) . review fpText . fromJustE msg <$> get_env var

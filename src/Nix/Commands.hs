@@ -12,6 +12,7 @@ data Config = Config { cfgDeclaredPackages :: FilePath
                      , cfgDeclaredOutPaths :: FilePath
                      , cfgKeepAroundProfile :: FilePath
                      , cfgDestProfile :: FilePath
+                     , cfgStoreDir :: FilePath
      }
   deriving (Show)
        
