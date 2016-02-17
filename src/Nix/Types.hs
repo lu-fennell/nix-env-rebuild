@@ -129,13 +129,16 @@ wantedFromDeclared r@Results{  rDeclared } =
 wantedFromKept :: Results -> Set PackageWithPath
 wantedFromKept r = S.map (oldPackage) (updatesFromKept r)
 
-updatesFromKept, blockedUpdates :: Results -> Set Upd
+updatesFromKept:: Results -> Set Upd
 updatesFromKept Results{ rKept, rDeclared }  = us
   where (us, _, _) = calculateUpdates rDeclared rKept
+
+blockedUpdates :: Results -> Set Upd
 blockedUpdates r@Results{ rInstalled } = S.filter isNonTrivial us
   where (us, _,_) = calculateUpdates 
                       (M.fromList . map newPackageAndStatus . S.toList $ updatesFromKept r)
                       (M.keysSet rInstalled)
+
 keptUpdates :: Results -> Set Upd
 keptUpdates Results{ rInstalled, rKept } = S.filter isNonTrivial us
   where (us, _,_) = calculateUpdates (addStorePathStatus rKept) (M.keysSet rInstalled)

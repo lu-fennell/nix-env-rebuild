@@ -1,7 +1,7 @@
 * DONE nix-env-rebuild: split off into its own package
 * DONE Remove nix-env-rebuild from nix-tools
 * TODO Blocker for first release
-** TODO Implement a syntax for specifying keep around packages
+** DONE Implement a syntax for specifying keep around packages
 - analogue to builtins.storePath...
 - Simple version
   - specify store paths in a file separate file (store-paths.nix), or
@@ -19,8 +19,14 @@
         shouldn't actually)
       - [X] parse the list of store paths
       - [X] install to cache only when not dryrunning
-      - [ ] test
-** TODO Change "updateing" in output to "changeing" (or "building"?)
+      - [X] test
+** WONTFIX Change "updateing" in output to "changeing" (or "building"?)
+** TODO Don't use keep-around profile
+saved from gc... but that does not mean we want to install it,
+necessarily. Just install the store paths directly.
+** TODO Rename "kept" 
+- [ ] (-> updatesFromKept -> overrdingStorePaths)
+- [ ] Fix output of update summary
 ** TODO Forward options to "nix-env -i"
 ** TODO Remove packages from cache profiles to keep polution of gc roots low
 ** TODO Clean errors about wrong config options (?)
@@ -29,9 +35,27 @@
 ** TODO Readme.md
 ** TODO Print status, not custom "availability"
 ** TODO Check if we are able to recover from errors
+- does anything need to be rolled back? 
+** TODO Rename to nix-rebuild (as the original nix would)
+** TODO Clean the cache after installing
 ** DONE Clean up the code
 ** DONE Clean up Utils.hs
 ** DONE Make cabal file aware of tests
+* TODO Differences to Elco's suggestion
+E. wants to abstract from manipulating profiles completely. From a
+user perspective, installing a packages now means that it is written
+to a "manifest-file" *per profile*.
+- This allows to keep/store the nixpkgs attribute name for installed
+  packages (as the attribute name might have disappeared from current
+  nixpkgs)
+- This does not allow to treat profile install as something
+  temporary. Currently I treat "nix-env -i"-installed packages that
+  way. I find this convenient.
+- This also allows to have packages to "follow" nixpkgs in a profile,
+  without a separate "packages.nix"
+- Can I support that for different profiles? Do I want that?
+- I also use store-path packages to *override* nixpkgs. Does that make
+  sense?
 * TODO Future
 ** TODO Implement "Availability"/Status
 - parse the "will be built" output

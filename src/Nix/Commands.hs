@@ -5,13 +5,11 @@ module Nix.Commands where
 import BasicPrelude hiding (try, (</>), (<.>), FilePath, rem, takeWhile)
 import Shelly hiding (path)
 import qualified Data.Text as Text
-import Control.Lens
 
 import Utils
 
 data Config = Config { cfgDeclaredPackages :: FilePath
                      , cfgDeclaredOutPaths :: FilePath
-                     , cfgKeepAroundProfile :: FilePath
                      , cfgDestProfile :: FilePath
      }
   deriving (Show)
@@ -72,6 +70,7 @@ nixCmdArgs NixQueryRemote = ["-qa", "--out-path", "--status"]
 nixDefault :: NixCmd -> Nix
 nixDefault nixcmd = Nix nixcmd Nothing True Nothing Nothing
            
+-- | perform a NixCmd for the destination profile
 nixDestProfile :: Config -> NixCmd -> Nix
 nixDestProfile (Config{cfgDestProfile}) nixcmd = (nixDefault nixcmd) { nixProfile = Just cfgDestProfile }
                
@@ -82,20 +81,12 @@ installPackages cfg@Config{..} ps =  (nixDestProfile cfg (NixInstall $ NIOs Fals
                           , nixSelection = Just ps
                           } 
 
--- | install the entire keep-around profile to the destination
-installKeep :: Config -> [Text] -> Nix
-installKeep cfg@Config{..} ps = 
-  (nixDestProfile cfg (NixInstall $ NIOs { nioRemoveAll = False
-                                         , nioFromProfile = Just cfgKeepAroundProfile}))
-     {nixSelection = Just ps} 
-
--- | install a list of store paths to the keep-around profile
-installToKeep :: Config -> [Text] -> Nix
-installToKeep Config{..} paths = 
-  (nixDefault (NixInstall (NIOs{ nioRemoveAll = True, nioFromProfile = Nothing })))
+-- | install a list of store paths to the destination profile
+installStorePaths :: Config -> [Text] -> Nix
+installStorePaths cfg paths = 
+  (nixDestProfile cfg (NixInstall (NIOs{ nioRemoveAll = False, nioFromProfile = Nothing })))
       { nixSelection = Just paths
       , nixDryRun = False
-      , nixProfile = Just cfgKeepAroundProfile
       }
 
 removePackages, switchToNewPackages :: Config -> Nix

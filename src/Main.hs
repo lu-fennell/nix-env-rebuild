@@ -15,9 +15,6 @@ import Control.Lens
 import Text.Printf.TH (st)
   
 
-import Formatting ((%))
-import qualified Formatting as Fmt
-
 import qualified Data.Set as S
 import qualified Data.Map as M
 
@@ -45,9 +42,8 @@ data Command = DryRun | Build | Switch
 
   
 -- default locations
-readDeclaredPackages, readKeepAroundProfile, readDestProfile, readOutPathList :: Sh FilePath
+readDeclaredPackages, readDestProfile, readOutPathList :: Sh FilePath
 readDeclaredPackages = "HOME" <$/!> ".nixpkgs/packages.nix" 
-readKeepAroundProfile = "NIX_USER_PROFILE_DIR" <$/!> "keep-around"
 readDestProfile = "NIX_USER_PROFILE_DIR" <$/!> "nix-rebuild-cache"
 readOutPathList = "HOME" <$/!> ".nixpkgs/store-path-install-list.txt"
                       
@@ -57,7 +53,6 @@ tmpProfileName = "tmp-nix-rebuild-profile"
 getConfig :: Sh (Opt)
 getConfig = do
    declaredPackages <- readDeclaredPackages 
-   keepAroundProfile <- readKeepAroundProfile 
    outPathList <- readOutPathList
    destProfile <- readDestProfile
    let flags :: Opt.Parser (Opt)
@@ -75,11 +70,6 @@ getConfig = do
                      <> help "File containing the list of store-path to be installed, \
                              \one store path per line."
                      )
-                   cfgKeepAroundProfile <- Opt.option Utils.fileReader 
-                     (long "keep-profile"
-                     <> metavar "DIR"
-                     <> value keepAroundProfile <> showDefault
-                     <> help "Profile for caching the output store paths. Store paths listed in ")
                    cfgDestProfile <- Opt.option Utils.fileReader
                      (long "cache-profile"
                      <> metavar "DIR"
@@ -102,7 +92,6 @@ getConfig = do
                    Opt {  optCfg = Config { 
                               cfgDeclaredPackages = cfgDeclaredPackages
                             , cfgDeclaredOutPaths = cfgDeclaredOutPaths
-                            , cfgKeepAroundProfile = cfgKeepAroundProfile
                             , cfgDestProfile = cfgDestProfile 
                           }
                           , optCommand = optCommand
@@ -188,13 +177,10 @@ makeReport Config{..} r =
      PP.text "Removing:" 
      $$ PP.nest 2 (formatSet formatPackageWithPath removing')
      $$
-     pptext (Fmt.sformat ("Forcing updates (from "%Fmt.stext%"):") 
-                         (toTextIgnore cfgKeepAroundProfile))
+     pptext "?? Store-path packages overriding nixpkgs:"
      $$ PP.nest 2 (formatSet formatUpd (keptUpdates r))
      $$
-     pptext (Fmt.sformat ( "Ignored updates and reinstalls \
-                            \(from "%Fmt.stext%"):") 
-                          (toTextIgnore cfgKeepAroundProfile))
+     pptext "?? Ignored updates and reinstalls :"
      $$ PP.nest 2 (formatSet formatUpd (blockedUpdates r))
   
   where formatSet f s | S.null s  = PP.text "<none>"
@@ -209,9 +195,8 @@ makeReport Config{..} r =
 doInstall :: Opt -> Results -> Sh ()
 doInstall Opt{..} r = do
   nixCmdCfgExecute $ removePackages optCfg
-  pkgCmd "package list" installPackages . map formatPackageWithPath . S.toList . M.keysSet . wantedFromDeclared $ r
-  pkgCmd "install to keep-around" installToKeep (map pwpPath . S.toList . wantedFromKept $ r)
-  pkgCmd "keep-around packages" installKeep  (map formatPackageWithPath . S.toList . wantedFromKept $ r)
+  pkgCmd "install package list" installPackages . map formatPackageWithPath . S.toList . M.keysSet . wantedFromDeclared $ r
+  pkgCmd "install store paths" installStorePaths (map pwpPath . S.toList . wantedFromKept $ r)
   when (optCommand == Switch) $ do
     nixCmdCfgExecute $ switchToNewPackages optCfg
   where pkgCmd source installCmd ps = 
