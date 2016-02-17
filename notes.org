@@ -18,15 +18,17 @@
       - [X] Refactor so that kept packages do not need status (they
         shouldn't actually)
       - [X] parse the list of store paths
+      - [X] install to cache only when not dryrunning
       - [ ] test
-      - [ ] install to cache only when not dryrunning
 ** TODO Change "updateing" in output to "changeing" (or "building"?)
+** TODO Forward options to "nix-env -i"
 ** TODO Remove packages from cache profiles to keep polution of gc roots low
 ** TODO Clean errors about wrong config options (?)
 ** TODO Check out if other (nix) errors are readable/understandable
 ** TODO Fix todos
 ** TODO Readme.md
 ** TODO Print status, not custom "availability"
+** TODO Check if we are able to recover from errors
 ** DONE Clean up the code
 ** DONE Clean up Utils.hs
 ** DONE Make cabal file aware of tests
@@ -74,9 +76,9 @@ Adding:
 because unison breaks if the server does not have the same version installed
 * TODO env-rebuild: support updates without version
 Maybe it already works.. test it!
-* TODO Add version option
+* WONTFIX Add version option
 Every tool should support "--version". This should be done centrally in Utils.hs or similar.
-* TODO Find a way to test if and how keep-around packages will be rebuilt/updated
+* WONTFIX Find a way to test if and how keep-around packages will be rebuilt/updated
 i.e. if they are available in a cache
 * TODO nix-env-rebuild: also give the package attribute names in outputs
 So that it is easy to update packages.nix

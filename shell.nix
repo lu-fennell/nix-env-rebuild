@@ -5,22 +5,28 @@ let
   inherit (nixpkgs) pkgs;
 
   f = { mkDerivation, applicative-quoters, attoparsec, base
-      , basic-prelude, containers, errors, formatting, HUnit, lens, mtl
-      , optparse-applicative, pretty, pretty-show, shelly, stdenv
-      , system-filepath, test-framework, test-framework-hunit, text
+      , basic-prelude, containers, errors, exceptions, formatting, HUnit
+      , lens, mtl, optparse-applicative, pretty, pretty-show, shelly
+      , stdenv, system-filepath, test-framework, test-framework-hunit
+      , text, th-printf
       }:
       mkDerivation {
-        pname = "nix-tools";
-        version = "0.5.0.1";
+        pname = "nix-env-rebuild";
+        version = "0.2.0.0";
         src = ./.;
         isLibrary = false;
         isExecutable = true;
         executableHaskellDepends = [
           applicative-quoters attoparsec base basic-prelude containers errors
+          exceptions formatting HUnit lens mtl optparse-applicative pretty
+          pretty-show shelly system-filepath text th-printf
+        ];
+        testHaskellDepends = [
+          applicative-quoters attoparsec base basic-prelude containers errors
           formatting HUnit lens mtl optparse-applicative pretty pretty-show
           shelly system-filepath test-framework test-framework-hunit text
         ];
-        description = "Tools for nixos";
+        description = "Declarative management of nix user environments";
         license = stdenv.lib.licenses.bsd3;
       };
 

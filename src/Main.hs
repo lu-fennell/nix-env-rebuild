@@ -12,6 +12,7 @@ import Text.PrettyPrint (($$))
 import qualified Text.PrettyPrint as PP
 import Data.Attoparsec.Text as Attoparsec
 import Control.Lens
+import Text.Printf.TH (st)
   
 
 import Formatting ((%))
@@ -85,12 +86,6 @@ getConfig = do
                      <> value destProfile <> showDefault
                      <> help "Profile to store the build result into"
                      )
-                   cfgStoreDir <- Opt.option Utils.fileReader
-                     (long "store-dir"
-                     <> metavar "DIR"
-                     <> value "/nix/store" <> showDefault
-                     <> help "Directory of the nix store"
-                     )
                    optVerbose <- flag False True 
                      (long "verbose" <> short 'v'
                      <> help "echo nix commands and their output") 
@@ -109,7 +104,6 @@ getConfig = do
                             , cfgDeclaredOutPaths = cfgDeclaredOutPaths
                             , cfgKeepAroundProfile = cfgKeepAroundProfile
                             , cfgDestProfile = cfgDestProfile 
-                            , cfgStoreDir = cfgStoreDir
                           }
                           , optCommand = optCommand
                           , optVerbose = optVerbose 
@@ -153,19 +147,25 @@ getResults cfg@Config{..} = do
            return Results{..}
         where parseNix p c = S.fromList <$> P.parseNixOutput p c
 
--- TODO: read store paths from declared out-paths
 -- TODO: should probably move to another module (Command.hs?)
 getStorePaths :: Config -> Sh (Set PackageWithPath)
 getStorePaths Config{..} = do
-  paths <- fmap (map T.strip . T.lines) . readfile $ cfgDeclaredOutPaths
-  fmap S.fromList . mapM (\p -> addStoreDir p =<< (parsePackageFromPath p)) $ paths
+  fileExists <- test_f cfgDeclaredOutPaths
+  if fileExists 
+   then do
+     paths <- fmap (map T.strip . T.lines) . readfile $ cfgDeclaredOutPaths
+     fmap S.fromList . mapM (\p -> addStoreDir p =<< (parsePackageFromPath p)) $ paths
+   else do
+    echo_err $ [st|Warning: installed store paths file does not exist (%s)|] 
+               (cfgDeclaredOutPaths^.Utils.fpText)
+    return (S.empty)
   where parsePackageFromPath = Utils.fromJustThrow 
                                . fmap parseVersionedPackage 
                                . Attoparsec.parseOnly (P.fromStorePath "" takeText) 
                                                       -- out paths are given relative to the store dir 
                                                       -- TODO: move this parser in the OutputParser module
         addStoreDir path p = return $ Pwp { pwpPkg = p
-                                          , pwpPath = over (from Utils.fpText) (cfgStoreDir</>) path 
+                                          , pwpPath = path 
                                           }
 
 makeReport :: Config -> Results -> PP.Doc
@@ -210,8 +210,8 @@ doInstall :: Opt -> Results -> Sh ()
 doInstall Opt{..} r = do
   nixCmdCfgExecute $ removePackages optCfg
   pkgCmd "package list" installPackages . map formatPackageWithPath . S.toList . M.keysSet . wantedFromDeclared $ r
-  echo_err "WARNING: would install wantedPackages to keep-around profile. NOT IMPLEMENTED."
-  pkgCmd "keep-around packages" installKeep $ map formatPackageWithPath $ S.toList $ wantedFromKept r
+  pkgCmd "install to keep-around" installToKeep (map pwpPath . S.toList . wantedFromKept $ r)
+  pkgCmd "keep-around packages" installKeep  (map formatPackageWithPath . S.toList . wantedFromKept $ r)
   when (optCommand == Switch) $ do
     nixCmdCfgExecute $ switchToNewPackages optCfg
   where pkgCmd source installCmd ps = 
