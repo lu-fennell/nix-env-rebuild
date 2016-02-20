@@ -30,8 +30,10 @@ necessarily. Just install the store paths directly.
 ** DONE Allow to install to different profiles "-p"
 - [X] Always give an explicit profile in commands
 - [X] test
-** TODO Suppress output when not in verbose
+** DONE Suppress output when not in verbose
 ** TODO Forward (some?) options to "nix-env -i"
+- [X] -p
+- [ ] -f
 ** TODO Remove packages from cache profiles to keep polution of gc roots low
 ** TODO Rename types module to packages
 ** TODO Clean errors about wrong config options (?)
