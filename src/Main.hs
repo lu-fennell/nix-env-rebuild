@@ -42,10 +42,11 @@ data Command = DryRun | Build | Switch
 
   
 -- default locations
-readDeclaredPackages, readDestProfile, readOutPathList :: Sh FilePath
+readDeclaredPackages, readDestProfile, readOutPathList, readProfile :: Sh FilePath
 readDeclaredPackages = "HOME" <$/!> ".nixpkgs/packages.nix" 
 readDestProfile = "NIX_USER_PROFILE_DIR" <$/!> "nix-rebuild-cache"
 readOutPathList = "HOME" <$/!> ".nixpkgs/store-path-install-list.txt"
+readProfile = "HOME" <$/!> ".nix-profile"
                       
 tmpProfileName :: Text
 tmpProfileName = "tmp-nix-rebuild-profile"
@@ -55,8 +56,16 @@ getConfig = do
    declaredPackages <- readDeclaredPackages 
    outPathList <- readOutPathList
    destProfile <- readDestProfile
+   profile <- readProfile
    let flags :: Opt.Parser (Opt)
        flags = [ado|
+                   cfgProfile <- Opt.option Utils.fileReader
+                     (long "profile"
+                     <> short 'p'
+                     <> metavar "DIR"
+                     <> value profile <> showDefault
+                     <> help "Target profile to install packages to"
+                     ) 
                    cfgDeclaredPackages <- Opt.option Utils.fileReader 
                      (long "packages"
                       <> metavar "FILE"
@@ -90,7 +99,8 @@ getConfig = do
                      pure DryRun
                    
                    Opt {  optCfg = Config { 
-                              cfgDeclaredPackages = cfgDeclaredPackages
+                              cfgProfile = cfgProfile
+                            , cfgDeclaredPackages = cfgDeclaredPackages
                             , cfgDeclaredOutPaths = cfgDeclaredOutPaths
                             , cfgDestProfile = cfgDestProfile 
                           }
@@ -125,13 +135,12 @@ main = shelly $ silently $ do
 
 getResults :: Config -> Sh Results
 getResults cfg@Config{..} = do
-           rKept <- getStorePaths cfg
+           rStorePaths <- getStorePaths cfg
            rDeclared <- fmap (M.fromList . S.toList) $ parseNix P.fromRemoteQuery
-                             (nixCmd $ (nixDefault NixQueryRemote)
-                              { nixFile = Just cfgDeclaredPackages
-                              , nixProfile = Just cfgDestProfile })
+                             (nixCmd $ (nixDefault cfgDestProfile NixQueryRemote)
+                              {nixFile = Just cfgDeclaredPackages})
            rInstalled <- fmap (M.fromList . S.toList) $ parseNix P.fromLocalQuery
-                             (nixCmd (nixDefault NixQueryLocal))
+                             (nixCmd (nixDefault cfgProfile NixQueryLocal))
 
            return Results{..}
         where parseNix p c = S.fromList <$> P.parseNixOutput p c
@@ -176,11 +185,11 @@ makeReport Config{..} r =
      $$ PP.char ' ' $$
      PP.text "Removing:" 
      $$ PP.nest 2 (formatSet formatPackageWithPath removing')
-     $$
-     pptext "?? Store-path packages overriding nixpkgs:"
-     $$ PP.nest 2 (formatSet formatUpd (keptUpdates r))
-     $$
-     pptext "?? Ignored updates and reinstalls :"
+     $$ PP.char ' ' $$
+     pptext "Updates through store-path packages:"
+     $$ PP.nest 2 (formatSet formatUpd (updatingStorePaths r))
+     $$ PP.char ' ' $$
+     pptext "Updates and reinstalls blocked by store-path packages:"
      $$ PP.nest 2 (formatSet formatUpd (blockedUpdates r))
   
   where formatSet f s | S.null s  = PP.text "<none>"
@@ -196,7 +205,7 @@ doInstall :: Opt -> Results -> Sh ()
 doInstall Opt{..} r = do
   nixCmdCfgExecute $ removePackages optCfg
   pkgCmd "install package list" installPackages . map formatPackageWithPath . S.toList . M.keysSet . wantedFromDeclared $ r
-  pkgCmd "install store paths" installStorePaths (map pwpPath . S.toList . wantedFromKept $ r)
+  pkgCmd "install store paths" installStorePaths (map pwpPath . S.toList . rStorePaths $ r)
   when (optCommand == Switch) $ do
     nixCmdCfgExecute $ switchToNewPackages optCfg
   where pkgCmd source installCmd ps = 

@@ -277,11 +277,6 @@ main = defaultMain
       wantedFromDeclared ex_result1 
       @?= fromPackageListWithStatus["newpackage-1", "somepackage-1.1.1"]
 
-    , testCase "wantedFromKept" $
-      wantedFromKept ex_result1 @?= fromPackageList [ "libreoffice-2.3"
-                                                    , "Agda-3.4"
-                                                    , "emacs-24"
-                                                    ]
     , testCase "unversioned updates" $
       installing ex_texliveResults
       @?= M.fromList 
@@ -291,7 +286,7 @@ main = defaultMain
           ]
   
     , testCase "unversioned blocked updates" $
-      blockedUpdates (ex_texliveResults { rKept = M.keysSet (rInstalled ex_texliveResults) })
+      blockedUpdates (ex_texliveResults { rStorePaths = M.keysSet (rInstalled ex_texliveResults) })
       @?= S.fromList
           [ Upd { uName =  "texlive-full" 
                 , uOld = ""
@@ -304,7 +299,7 @@ main = defaultMain
    ]
  ]
 
-ex_result1 = Results { rKept = S.fromList $ map (mkOld . parseVersionedPackage)
+ex_result1 = Results { rStorePaths = S.fromList $ map (mkOld . parseVersionedPackage)
                                [ "libreoffice-2.3"
                                , "Agda-3.4"
                                , "emacs-24"
@@ -323,7 +318,7 @@ ex_result1 = Results { rKept = S.fromList $ map (mkOld . parseVersionedPackage)
                                     , "remove-me-1"
                                     ]
                      }
-ex_texliveResults = Results { rKept = S.empty
+ex_texliveResults = Results { rStorePaths = S.empty
                           , rDeclared  = M.fromList 
                                          . map (packageWithPathFromText)
                                          $ [ "texlive-full  /nix/store/lynr5fvcpp21rzjaz1ahjzn1zd7r0dkr-TeXLive-linkdir"

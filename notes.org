@@ -21,13 +21,18 @@
       - [X] install to cache only when not dryrunning
       - [X] test
 ** WONTFIX Change "updateing" in output to "changeing" (or "building"?)
-** TODO Don't use keep-around profile
+** DONE Don't use keep-around profile
 saved from gc... but that does not mean we want to install it,
 necessarily. Just install the store paths directly.
-** TODO Rename "kept" 
-- [ ] (-> updatesFromKept -> overrdingStorePaths)
-- [ ] Fix output of update summary
-** TODO Forward options to "nix-env -i"
+** DONE Rename "kept" 
+- [X] (-> updatesFromKept -> overrdingStorePaths)
+- [X] Fix output of update summary
+** TODO Allow to install to different profiles "-p"
+- [ ] Always give an explicit profile in commands
+- [ ] test
+** TODO Rename types module to packages
+** TODO Forward (some?) options to "nix-env -i"
+** TODO Suppress output when not in verbose
 ** TODO Remove packages from cache profiles to keep polution of gc roots low
 ** TODO Clean errors about wrong config options (?)
 ** TODO Check out if other (nix) errors are readable/understandable
@@ -41,21 +46,28 @@ necessarily. Just install the store paths directly.
 ** DONE Clean up the code
 ** DONE Clean up Utils.hs
 ** DONE Make cabal file aware of tests
-* TODO Differences to Elco's suggestion
-E. wants to abstract from manipulating profiles completely. From a
-user perspective, installing a packages now means that it is written
-to a "manifest-file" *per profile*.
-- This allows to keep/store the nixpkgs attribute name for installed
-  packages (as the attribute name might have disappeared from current
-  nixpkgs)
-- This does not allow to treat profile install as something
-  temporary. Currently I treat "nix-env -i"-installed packages that
-  way. I find this convenient.
-- This also allows to have packages to "follow" nixpkgs in a profile,
-  without a separate "packages.nix"
-- Can I support that for different profiles? Do I want that?
-- I also use store-path packages to *override* nixpkgs. Does that make
-  sense?
+* TODO Differences to Elco's "nix install"/"nix install -d"/"nix rebuild"
+** Summary E's proposal
+- E. add a manifest to each profile that records installed
+  /expressions/ and /store paths/.
+  - This allows to keep/store the nixpkgs attribute name for installed
+    packages
+    - (as the attribute name might have disappeared from current
+      nixpkgs, it is recorded in the manifest).
+    - (This approach would also allow to keep other metadata, like
+      installation time, nixpkgs version, ...)
+  - adding expressions means that these packages are updated at every
+    install action, tracking "nixpkgs". (Makes it difficult to
+    test-drive packages from a different nixpkgs tree)
+** Difference to nix-env-rebuild
+- E cares about the installation into profiles. (Actually, nothing
+  "declarative" about that). nix-env-rebuild tries to define the
+  "wanted" user-environment in a file, like "systemPackages".
+- For nix-env-rebuild, profile installs are temporary.
+- "nix install x" can be simulated by
+  =nix-env-rebuild switch && nix-env -i x=
+- nix-env-rebuild allows to use store-path packages to *override*
+  nixpkgs packages. This has no real analogue in E.'s design
 * TODO Future
 ** TODO Implement "Availability"/Status
 - parse the "will be built" output

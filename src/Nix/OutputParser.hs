@@ -4,7 +4,6 @@ module Nix.OutputParser where
 
 import BasicPrelude hiding (try, (</>), (<.>), FilePath, rem, takeWhile)
 import Control.Applicative.QQ.ADo
-import Data.Monoid
 import Control.Lens
 import Data.Text.Lens
 import qualified Data.Char as Char
@@ -67,7 +66,7 @@ fromFetching basedir = (fromStorePath basedir takeText)
                
 fromLocalQuery, fromRemoteQuery :: Parser (Maybe (Package, StorePath, PkgStatus))
 fromLocalQuery = over (mapped._Just) 
-                        (\(pkg, path) -> (pkg, path, Present)) 
+                        (\(pkg, p) -> (pkg, p, Present)) 
                         fromQuery
 fromRemoteQuery = do
   status <- status

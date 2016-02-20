@@ -113,36 +113,42 @@ findUpdate added removed = mkUpd added removed
                 | otherwise = Nothing
   
 
-data Results = Results { rKept :: Set PackageWithPath
+data Results = Results { rStorePaths :: Set PackageWithPath
                        , rDeclared :: Map PackageWithPath PkgStatus
                        , rInstalled :: Map PackageWithPath PkgStatus }
   deriving Show
 
-removing,installing,wantedFromDeclared :: Results -> Map PackageWithPath PkgStatus
+removing,installing :: Results -> Map PackageWithPath PkgStatus
 removing r@Results{ rInstalled, rDeclared } = 
-  removeKeys (rInstalled M.\\ rDeclared) (wantedFromKept r)
+  removeKeys (rInstalled M.\\ rDeclared) (rStorePaths r)
 installing r@Results{ rInstalled } = 
   (wantedFromDeclared r M.\\ rInstalled) 
+
+-- | declared packages that should be installed, i.e. that are not
+-- overriden by some store paths
+wantedFromDeclared :: Results -> Map PackageWithPath PkgStatus
 wantedFromDeclared r@Results{  rDeclared } = 
-  removeKeys rDeclared (S.map newPackage (updatesFromKept r))
+  removeKeys rDeclared (S.map newPackage (overridingStorePaths r))
 
-wantedFromKept :: Results -> Set PackageWithPath
-wantedFromKept r = S.map (oldPackage) (updatesFromKept r)
+-- | Store paths overriding declared packages (as a set of updates)
+overridingStorePaths:: Results -> Set Upd
+overridingStorePaths Results{ rStorePaths, rDeclared }  = us
+  where (us, _, _) = calculateUpdates rDeclared rStorePaths
 
-updatesFromKept:: Results -> Set Upd
-updatesFromKept Results{ rKept, rDeclared }  = us
-  where (us, _, _) = calculateUpdates rDeclared rKept
-
+-- | Updates that are prevented by store paths overriding declared
+-- packages. These are packages that will not change even though there
+-- is a newer version in nixpkgs.
 blockedUpdates :: Results -> Set Upd
 blockedUpdates r@Results{ rInstalled } = S.filter isNonTrivial us
   where (us, _,_) = calculateUpdates 
-                      (M.fromList . map newPackageAndStatus . S.toList $ updatesFromKept r)
+                      (M.fromList . map newPackageAndStatus . S.toList $ overridingStorePaths r)
                       (M.keysSet rInstalled)
 
-keptUpdates :: Results -> Set Upd
-keptUpdates Results{ rInstalled, rKept } = S.filter isNonTrivial us
-  where (us, _,_) = calculateUpdates (addStorePathStatus rKept) (M.keysSet rInstalled)
-        -- TODO: actually rKept could have a proper status from the start
+-- | Updates that result from store paths
+updatingStorePaths :: Results -> Set Upd
+updatingStorePaths Results{ rInstalled, rStorePaths } = S.filter isNonTrivial us
+  where (us, _,_) = calculateUpdates (addStorePathStatus rStorePaths) (M.keysSet rInstalled)
+        -- TODO: actually rStorePaths could have a proper status from the start
         addStorePathStatus = M.fromSet (const Present) 
 
 isStrictUpdate, isReinstall, isNonTrivial :: Upd -> Bool
