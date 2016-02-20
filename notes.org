@@ -27,22 +27,20 @@ necessarily. Just install the store paths directly.
 ** DONE Rename "kept" 
 - [X] (-> updatesFromKept -> overrdingStorePaths)
 - [X] Fix output of update summary
-** TODO Allow to install to different profiles "-p"
-- [ ] Always give an explicit profile in commands
-- [ ] test
-** TODO Rename types module to packages
-** TODO Forward (some?) options to "nix-env -i"
+** DONE Allow to install to different profiles "-p"
+- [X] Always give an explicit profile in commands
+- [X] test
 ** TODO Suppress output when not in verbose
+** TODO Forward (some?) options to "nix-env -i"
 ** TODO Remove packages from cache profiles to keep polution of gc roots low
+** TODO Rename types module to packages
 ** TODO Clean errors about wrong config options (?)
 ** TODO Check out if other (nix) errors are readable/understandable
 ** TODO Fix todos
 ** TODO Readme.md
-** TODO Print status, not custom "availability"
 ** TODO Check if we are able to recover from errors
 - does anything need to be rolled back? 
-** TODO Rename to nix-rebuild (as the original nix would)
-** TODO Clean the cache after installing
+** WONTFIX Rename to nix-rebuild (as the original nix would)
 ** DONE Clean up the code
 ** DONE Clean up Utils.hs
 ** DONE Make cabal file aware of tests
@@ -88,6 +86,7 @@ Either manage it declaratively and sync the "spec" or sync profiles somehow
 ** TODO Support -b flag
 that only updates downloadable stuff
 ** TODO Show which packages are available in system
+** TODO Print status, not custom "availability"
 * DONE Allow to declare nixpkgs location
 * DONE nix-env-rebuild: implement things as commands
 - dry-run (now without args)

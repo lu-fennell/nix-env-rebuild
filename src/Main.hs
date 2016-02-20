@@ -122,8 +122,8 @@ main = shelly $ silently $ do
   (if optVerbose then verbosely else silently) $ do
     r <- getResults optCfg
     report optCfg r
-    when (optCommand /= DryRun) $ print_stdout True $ print_stderr True $ 
-      doInstall opt r
+    when (optCommand /= DryRun) $ do
+      (if optVerbose then withOutput else id) $ doInstall opt r
     echo $ "\n" <> finishMessage opt
 
   where finishMessage Opt{..} = case optCommand of
@@ -132,6 +132,8 @@ main = shelly $ silently $ do
           Switch -> "Rebuild done"
 
         report cfg r = echo $ T.pack (PP.render (makeReport cfg r))
+
+        withOutput = print_stdout True . print_stderr True
 
 getResults :: Config -> Sh Results
 getResults cfg@Config{..} = do
@@ -203,15 +205,23 @@ makeReport Config{..} r =
 ---------------------------
 doInstall :: Opt -> Results -> Sh ()
 doInstall Opt{..} r = do
+  echo $ [st|\n* Installing packages from %s to cache profile \n   (%s)|] 
+         (toTextIgnore . cfgDeclaredPackages $ optCfg)
+         (toTextIgnore . cfgDestProfile $ optCfg)
   nixCmdCfgExecute $ removePackages optCfg
-  pkgCmd "install package list" installPackages . map formatPackageWithPath . S.toList . M.keysSet . wantedFromDeclared $ r
+  pkgCmd "install package list" installPackages 
+    . map formatPackageWithPath 
+    . S.toList . M.keysSet 
+    . wantedFromDeclared $ r
+  echo $ [st|\n* Installing packages from %s to cache profile \n   (%s)|] 
+         (toTextIgnore . cfgDeclaredOutPaths $ optCfg)
+         (toTextIgnore . cfgDestProfile $ optCfg)
   pkgCmd "install store paths" installStorePaths (map pwpPath . S.toList . rStorePaths $ r)
   when (optCommand == Switch) $ do
+    echo $ [st|\n* Switching profile %s|] (toTextIgnore . cfgProfile $ optCfg)
     nixCmdCfgExecute $ switchToNewPackages optCfg
   where pkgCmd source installCmd ps = 
           if null ps 
           then echo_err $ "nix-rebuild: Nothing to be installed from " <> source
           else nixCmdCfgExecute $ installCmd optCfg ps
         nixCmdCfgExecute = nixCmd_ . \n -> n { nixDryRun = optCommand == DryRun }
-
-
