@@ -10,7 +10,7 @@ contains exactly those declared packages.
 The set of declared packages is determined by a Nix-expression read
 from the *packages file* (option `--packages`, default
 `~/.nixpkgs/packages.nix`) and, optionally, by a list of store-paths
-(option `--out-path-list`, default
+(option `--store-path-list`, default
 `~/.nixpkgs/store-path-install-list.txt`). 
 
 Packages file example:
@@ -26,15 +26,15 @@ Store path list example
 ```
 # file ~/.nixpkgs/store-path-install-list.txt
 #  Specify one store path per line.
-#  Start comments with a hash (`#')
-#  Blank lines are ignored
+#  Start comments with a hash (`#').
+#  Blank lines are ignored.
 /nix/store/k1i2i013n3p1y3bb6b48ljzz7iz29ajf-TeXLive-linkdir
 /nix/store/4i32xkjrn50cjjjywncv2ala11cf40l6-openbox-3.6.1
 ```
 
 Given the above file, running 
 
-    nix-env-rebuild switch --packages ~/.nixpkgs/packages.nix --out-path-list ~/.nixpkgs/store-path-install-list.txt
+    nix-env-rebuild switch --packages ~/.nixpkgs/packages.nix --store-path-list ~/.nixpkgs/store-path-install-list.txt
 
 results in a user profile containing 
 
@@ -43,5 +43,7 @@ results in a user profile containing
 - and nothing else
 
 ## Commands
+TODO
 
 ## Handling of the store-path list
+TODO

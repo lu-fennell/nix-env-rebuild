@@ -74,9 +74,9 @@ getConfig = do
                               \It should contain a nix-expression evaluating to a list of derivations \ 
                               \(as for: nix-env -i -f FILE)")
                    cfgDeclaredOutPaths <- Opt.option Utils.fileReader
-                     (long "out-path-list"
+                     (long "store-path-list"
                      <> value outPathList <> showDefault
-                     <> help "File containing the list of store-path to be installed, \
+                     <> help "File containing the list of store-paths to be installed, \
                              \one store path per line."
                      )
                    cfgDestProfile <- Opt.option Utils.fileReader
