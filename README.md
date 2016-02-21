@@ -43,6 +43,16 @@ results in a user profile containing
 - and nothing else
 
 ## Commands
+
+There are three commands:
+
+- `dry-run`: Calculate and display a summary on how the selected
+  profile would change when doing a rebuild. Does not actually install
+  anything. See "Update output" below for an explanation of the summary.
+- `build`: Install the declared packages into a *cache profile* (option `--cache-profile`, default `$NIX_USER_PROFILE_DIR/nix-env-rebuild-cache`). Does *not* modify the selected profile.
+- `switch`: Install the declared packages into the selected profile.
+
+## Update output
 TODO
 
 ## Handling of the store-path list
