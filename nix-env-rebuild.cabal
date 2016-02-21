@@ -2,12 +2,12 @@ name: nix-env-rebuild
 version: 0.2.0.0
 cabal-version: >=1.8
 build-type: Simple
-license: BSD3
+license: GPL
 license-file: LICENSE
-maintainer: fennell.dev@autistici.org
-synopsis: Declarative management of nix user environments
+maintainer: lu-fennell@startmail.com
+synopsis: Declarative management of the Nix user environment
 category: System
-author: Luminous Fennell
+author: Lu Fennell
 
 executable nix-env-rebuild
     main-is: Main.hs
