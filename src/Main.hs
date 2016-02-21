@@ -125,6 +125,7 @@ getConfig = do
 main :: IO ()
 main = shelly $ silently $ do
   opt@Opt{..} <- getConfig
+  checkConfig optCfg
   searchPath <- get_env_text "NIX_PATH"
   (if optVerbose then verbosely else silently) $ do
     r <- getResults optCfg
@@ -146,6 +147,13 @@ main = shelly $ silently $ do
         report cfg r = echo $ T.pack (PP.render (makeReport cfg r))
 
         withOutput = print_stdout True . print_stderr True
+
+checkConfig :: Config -> Sh ()
+checkConfig Config{..} = do
+  unlessM (test_f cfgDeclaredPackages) $ do
+    errorExit $ [st|Package file `%s' does not exist. Aborting.|] (toTextIgnore cfgDeclaredPackages)
+  whenM (test_f cfgDeclaredOutPaths) $ do
+    errorExit $ [st|Store path file `%s' does not exist. Aborting.|] (toTextIgnore cfgDeclaredOutPaths)
 
 getResults :: Config -> Sh Results
 getResults cfg@Config{..} = do

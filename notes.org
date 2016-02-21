@@ -31,10 +31,10 @@ necessarily. Just install the store paths directly.
 - [X] Always give an explicit profile in commands
 - [X] test
 ** DONE Suppress output when not in verbose
-** TODO Forward (some?) options to "nix-env -i"
+** DONE Forward (some?) options to "nix-env -i"
 - [X] -p
 - [X] +-f+ no! as we use -f for reading packages.nix
-- [ ] -I
+- [X] -I
 ** TODO Rename types module to packages
 ** TODO Clean errors about wrong config options (?)
 ** TODO Check out if other (nix) errors are readable/understandable
@@ -104,6 +104,8 @@ that only updates downloadable stuff
 ** TODO Print status, not custom "availability"
 ** TODO Remove packages from cache profiles to keep polution of gc roots low
 - [ ] ... or is there a way to have "weak references" in profiles...
+** TODO Clean up error messages
+so that they do not print the Shelly-trace.
 * DONE Allow to declare nixpkgs location
 * DONE nix-env-rebuild: implement things as commands
 - dry-run (now without args)
