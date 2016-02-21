@@ -14,7 +14,6 @@ executable nix-env-rebuild
     hs-source-dirs: src
     ghc-options: -Wall
     build-depends:
-        HUnit >=1.2,
         applicative-quoters >=0.1,
         attoparsec >=0.10,
         base >=4.6 && <4.9,
@@ -22,7 +21,6 @@ executable nix-env-rebuild
         containers >=0.5,
         errors >=1.4,
         exceptions >=0.8,
-        formatting >=5.4,
         lens >=4.1,
         mtl >=2.1,
         optparse-applicative >=0.11,
@@ -34,7 +32,7 @@ executable nix-env-rebuild
         th-printf >=0.3.1
     other-modules:
         Utils
-        Nix.Types
+        Nix.Packages
         Nix.OutputParser
         Nix.Commands
 
@@ -52,7 +50,6 @@ test-suite nix-env-rebuild-tests
     basic-prelude >=0.5,
     containers >=0.5,
     errors >=1.4,
-    formatting >=5.4,
     lens >=4.1,
     mtl >=2.1,
     optparse-applicative >=0.11,

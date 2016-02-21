@@ -1,16 +1,15 @@
 {-# LANGUAGE NamedFieldPuns, NoImplicitPrelude, OverloadedStrings, ExtendedDefaultRules, RecordWildCards, NoMonomorphismRestriction, TemplateHaskell, QuasiQuotes, RecordWildCards #-}
 
-module Nix.Types where 
+module Nix.Packages where 
 
 import BasicPrelude hiding (try, (</>), (<.>), FilePath, show, rem, takeWhile)
 
 import qualified Data.Text as Text
 import qualified Data.Char as Char
-import Formatting ((%))
-import qualified Formatting as Fmt
 import qualified Data.Set as S
 import qualified Data.Map as M
 import Control.Lens
+import Text.Printf.TH
 
 import Utils 
 
@@ -71,8 +70,7 @@ data Upd = Upd { uName :: Package
   
 formatUpd :: Upd -> Text
 formatUpd Upd{uName, uOld, uNew, uStatus} = 
-  Fmt.sformat (""%Fmt.stext%" ("%Fmt.stext%" -> "%Fmt.stext%" "%Fmt.shown%")")
-              uName uOld uNew uStatus
+  [st|%s (%s -> %s %?)|] uName uOld uNew uStatus
        
 oldPackage, newPackage :: Upd -> PackageWithPath
 oldPackage Upd{..} = Pwp { pwpPkg = VPkg{pName = uName, pVer = uOld}

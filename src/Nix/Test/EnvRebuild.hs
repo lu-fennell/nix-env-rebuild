@@ -16,7 +16,7 @@ import Test.HUnit
 
 import Data.Attoparsec.Text
 
-import Nix.Types
+import Nix.Packages
 import Nix.Commands
 import Utils
 import qualified Nix.OutputParser as P

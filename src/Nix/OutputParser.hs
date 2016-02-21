@@ -11,7 +11,7 @@ import qualified Data.Text as Text
 import Data.Attoparsec.Text
 import Shelly
 
-import Nix.Types 
+import Nix.Packages
 
 parseNixOutput :: Parser (Maybe (Package, StorePath, PkgStatus)) 
                -> Sh Text 
@@ -69,10 +69,10 @@ fromLocalQuery = over (mapped._Just)
                         (\(pkg, p) -> (pkg, p, Present)) 
                         fromQuery
 fromRemoteQuery = do
-  status <- status
+  stat <- status
   skipSpace
   mq <- fromQuery
-  return $ over _Just (\(pkg, path) -> (pkg, path, status)) mq
+  return $ over _Just (\(pkg, p) -> (pkg, p, stat)) mq
   
 status :: Parser PkgStatus
 status = [ado|
@@ -85,10 +85,10 @@ fromQuery :: Parser (Maybe (Package, StorePath))
 fromQuery = do 
                 name <- takeWhile (not . Char.isSpace)
                 skipSpace
-                path <- takeText
-                guard (not . Text.null $ path)
-                guard (Text.all (not . Char.isSpace) path)
-                return $ Just (name, path)
+                p <- takeText
+                guard (not . Text.null $ p)
+                guard (Text.all (not . Char.isSpace) p)
+                return $ Just (name, p)
 
 wouldInstall:: FilePath -> Parser (Maybe Package)
 wouldInstall basedir =  (Just <$> fromBuilding basedir)

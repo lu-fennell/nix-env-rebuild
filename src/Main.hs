@@ -21,7 +21,7 @@ import qualified Data.Map as M
 import Utils ((<$/!>))
 import qualified Utils
 import qualified Nix.OutputParser as P
-import Nix.Types
+import Nix.Packages
 import Nix.Commands
 
 default (Text)
