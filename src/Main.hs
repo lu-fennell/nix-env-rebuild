@@ -44,7 +44,7 @@ data Command = DryRun | Build | Switch
 -- default locations
 readDeclaredPackages, readDestProfile, readOutPathList, readProfile :: Sh FilePath
 readDeclaredPackages = "HOME" <$/!> ".nixpkgs/packages.nix" 
-readDestProfile = "NIX_USER_PROFILE_DIR" <$/!> "nix-rebuild-cache"
+readDestProfile = "NIX_USER_PROFILE_DIR" <$/!> "nix-env-rebuild-cache"
 readOutPathList = "HOME" <$/!> ".nixpkgs/store-path-install-list.txt"
 readProfile = "HOME" <$/!> ".nix-profile"
                       
