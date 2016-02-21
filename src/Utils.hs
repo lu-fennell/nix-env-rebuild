@@ -56,8 +56,8 @@ runStderr p args = runHandles p args [] $ \_ _ h -> liftIO (hGetContents h) -|- 
 -- Misc
 -- -------------------------------------------------------------------
 
-maybeOpt :: Text -> Maybe FilePath -> [Text]
-maybeOpt opt = maybe [] (\p -> [opt, toTextIgnore p])
+maybeOpt :: Text -> Maybe Text -> [Text]
+maybeOpt opt = maybe [] (\p -> [opt, p])
 
 removeKeys :: (Eq a, Ord a) => Map a b -> Set a -> Map a b
 removeKeys m s = Set.foldl' (\m k -> Map.delete k m) m s

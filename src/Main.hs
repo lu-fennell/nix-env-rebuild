@@ -85,6 +85,11 @@ getConfig = do
                      <> value destProfile <> showDefault
                      <> help "Profile to store the build result into"
                      )
+                   cfgInclude <- Opt.option (fmap Just Utils.textReader)
+                     (short 'I'
+                     <> Opt.metavar "PATH"
+                     <> help "Add a path to the Nix expression search path")
+                     <|> pure Nothing
                    optVerbose <- flag False True 
                      (long "verbose" <> short 'v'
                      <> help "echo nix commands and their output") 
@@ -103,6 +108,7 @@ getConfig = do
                             , cfgDeclaredPackages = cfgDeclaredPackages
                             , cfgDeclaredOutPaths = cfgDeclaredOutPaths
                             , cfgDestProfile = cfgDestProfile 
+                            , cfgInclude = cfgInclude
                           }
                           , optCommand = optCommand
                           , optVerbose = optVerbose 
@@ -119,8 +125,14 @@ getConfig = do
 main :: IO ()
 main = shelly $ silently $ do
   opt@Opt{..} <- getConfig
+  searchPath <- get_env_text "NIX_PATH"
   (if optVerbose then verbosely else silently) $ do
     r <- getResults optCfg
+    echo $ "* Calculating updates"
+    echo $ [st|  - packages from %s|] (toTextIgnore . cfgDeclaredPackages $ optCfg)
+    echo $ [st|  - store-paths from %s|] (toTextIgnore . cfgDeclaredOutPaths $ optCfg)
+    echo $ [st|  - search path %s|] (maybe searchPath (\p -> [st|%s:%s|] p searchPath) (cfgInclude optCfg))
+    echo ""
     report optCfg r
     when (optCommand /= DryRun) $ do
       (if optVerbose then withOutput else id) $ doInstall opt r
@@ -139,10 +151,10 @@ getResults :: Config -> Sh Results
 getResults cfg@Config{..} = do
            rStorePaths <- getStorePaths cfg
            rDeclared <- fmap (M.fromList . S.toList) $ parseNix P.fromRemoteQuery
-                             (nixCmd $ (nixDefault cfgDestProfile NixQueryRemote)
+                             (nixCmd $ (nixDefault cfgDestProfile cfgInclude NixQueryRemote)
                               {nixFile = Just cfgDeclaredPackages})
            rInstalled <- fmap (M.fromList . S.toList) $ parseNix P.fromLocalQuery
-                             (nixCmd (nixDefault cfgProfile NixQueryLocal))
+                             (nixCmd (nixDefault cfgProfile cfgInclude NixQueryLocal))
 
            return Results{..}
         where parseNix p c = S.fromList <$> P.parseNixOutput p c

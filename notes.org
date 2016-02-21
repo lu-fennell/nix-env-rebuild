@@ -33,8 +33,8 @@ necessarily. Just install the store paths directly.
 ** DONE Suppress output when not in verbose
 ** TODO Forward (some?) options to "nix-env -i"
 - [X] -p
-- [ ] -f
-** TODO Remove packages from cache profiles to keep polution of gc roots low
+- [X] +-f+ no! as we use -f for reading packages.nix
+- [ ] -I
 ** TODO Rename types module to packages
 ** TODO Clean errors about wrong config options (?)
 ** TODO Check out if other (nix) errors are readable/understandable
@@ -68,6 +68,19 @@ necessarily. Just install the store paths directly.
   =nix-env-rebuild switch && nix-env -i x=
 - nix-env-rebuild allows to use store-path packages to *override*
   nixpkgs packages. This has no real analogue in E.'s design
+* TODO Potential issues w/ Elco's nix-install 
+** TODO manifest.nix: nix-attribute set vs "list-of-names"
+What is the benefit of having an attribute set as manifest?
+Conceptually the manifest is more like a list of names... or rather
+even a list of store-paths.
+
+What are the problems? For one, the attribute set relies on a value of
+<nixpkgs>.. which changes depending on NIX_PATH. But I was under the
+impression that the "-f" option should identify the nixpkgs tree for
+install. How do the two concepts fit together?
+
+This issue ties in closely with the problem I have with "declarative
+entries" in the manifest; 
 * TODO Future
 ** TODO Implement "Availability"/Status
 - parse the "will be built" output
@@ -89,6 +102,8 @@ Either manage it declaratively and sync the "spec" or sync profiles somehow
 that only updates downloadable stuff
 ** TODO Show which packages are available in system
 ** TODO Print status, not custom "availability"
+** TODO Remove packages from cache profiles to keep polution of gc roots low
+- [ ] ... or is there a way to have "weak references" in profiles...
 * DONE Allow to declare nixpkgs location
 * DONE nix-env-rebuild: implement things as commands
 - dry-run (now without args)
