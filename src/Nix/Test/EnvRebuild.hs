@@ -129,11 +129,13 @@ main = defaultMain
   , testGroup "commands" $
     [ testCase "install declared packages into profile" $
       nixCmdStrings
-      (Nix (NixInstall (NIOs False Nothing))
-          Nothing
-          True
-          (Just $ "some" </> "profile")
-          (Just $ "somedir" </> "declared-packages.nix"))
+      (Nix { nixCommand =   (NixInstall (NIOs False Nothing))
+           , nixSelection = Nothing
+           , nixDryRun =    True
+           , nixProfile =   ("some" </> "profile")
+           , nixFile =      (Just $ "somedir" </> "declared-packages.nix")
+           , nixInclude =   Nothing
+           })
       @?=
       ("nix-env", [ "--dry-run"
                   , "--profile", "some/profile"
@@ -144,11 +146,13 @@ main = defaultMain
 
     , testCase "install selection of declared packages into profile" $
       nixCmdStrings
-      (Nix (NixInstall (NIOs False Nothing))
-          (Just ["a", "b", "c"])
-          True
-          (Just $ "some" </> "profile")
-          (Just $ "somedir" </> "declared-packages.nix"))
+      (Nix { nixCommand =   (NixInstall (NIOs False Nothing))
+           , nixSelection = (Just ["a", "b", "c"])
+           , nixDryRun =    True
+           , nixProfile =   ("some" </> "profile")
+           , nixFile =      (Just $ "somedir" </> "declared-packages.nix")
+           , nixInclude =   Nothing
+           })
       @?=
       ("nix-env", [ "--dry-run"
                   , "--profile", "some/profile"
@@ -161,12 +165,13 @@ main = defaultMain
 
     , testCase "install all packages from profile into profile" $
       over _2 S.fromList (nixCmdStrings
-      (Nix (NixInstall (NIOs False (Just $ "source" </> "profile")))
-           Nothing
-           True
-           (Just $ "some" </> "profile")
-           
-           Nothing))
+      (Nix { nixCommand =   (NixInstall (NIOs False (Just $ "source" </> "profile")))
+           , nixSelection = Nothing
+           , nixDryRun =    True
+           , nixProfile =   ("some" </> "profile")
+           , nixFile =      Nothing
+           , nixInclude =   Nothing
+           }))
       @?=
       ("nix-env", S.fromList [ "--dry-run"
                   , "--profile", "some/profile"
@@ -176,11 +181,13 @@ main = defaultMain
                   ])
     , testCase "remove all packages from a profile" $
       nixCmdStrings
-      (Nix (NixUninstall)
-           Nothing
-           False
-           (Just $ "some" </> "profile")
-           Nothing)
+      (Nix { nixCommand =   (NixUninstall)
+           , nixSelection = Nothing
+           , nixDryRun =    False
+           , nixProfile =   ("some" </> "profile")
+           , nixFile =      Nothing
+           , nixInclude =   Nothing
+           })
       @?=
       ("nix-env", [ "--profile", "some/profile", "-e", "*"])
       

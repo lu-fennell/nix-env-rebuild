@@ -50,6 +50,7 @@ test-suite nix-env-rebuild-tests
     basic-prelude >=0.5,
     containers >=0.5,
     errors >=1.4,
+    exceptions >=0.8,
     lens >=4.1,
     mtl >=2.1,
     optparse-applicative >=0.11,
@@ -57,5 +58,6 @@ test-suite nix-env-rebuild-tests
     pretty-show >=1.6,
     shelly >=1.5,
     system-filepath >=0.4,
-    text >=0.11
+    text >=0.11,
+    th-printf >=0.3.1
 
