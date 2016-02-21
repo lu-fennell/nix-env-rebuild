@@ -32,7 +32,7 @@ Store path list example
 /nix/store/4i32xkjrn50cjjjywncv2ala11cf40l6-openbox-3.6.1
 ```
 
-Given the above file, running 
+Given the above files, running 
 
     nix-env-rebuild switch --packages ~/.nixpkgs/packages.nix --store-path-list ~/.nixpkgs/store-path-install-list.txt
 
