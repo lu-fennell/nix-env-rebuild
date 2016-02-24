@@ -33,6 +33,7 @@ default (Text)
 data Opt = Opt { optCfg :: Config
                , optCommand :: Command
                , optVerbose :: Bool
+               , optKeepInstalled :: Bool
                }
   deriving (Show)
 
@@ -90,6 +91,10 @@ getConfig = do
                      <> Opt.metavar "PATH"
                      <> help "Add a path to the Nix expression search path")
                      <|> pure Nothing
+                   optKeepInstalled <- flag False True
+                     (long "keep-installed"
+                     <> help "do not remove undeclared packages currently installed"
+                     )
                    optVerbose <- flag False True 
                      (long "verbose" <> short 'v'
                      <> help "echo nix commands and their output") 
@@ -112,6 +117,7 @@ getConfig = do
                           }
                           , optCommand = optCommand
                           , optVerbose = optVerbose 
+                          , optKeepInstalled = optKeepInstalled
                           } 
                    |]
    liftIO $ execParser
@@ -134,7 +140,7 @@ main = shelly $ silently $ do
     echo $ [st|  - store-paths from %s|] (toTextIgnore . cfgDeclaredOutPaths $ optCfg)
     echo $ [st|  - search path %s|] (maybe searchPath (\p -> [st|%s:%s|] p searchPath) (cfgInclude optCfg))
     echo ""
-    report optCfg r
+    report optKeepInstalled optCfg r
     when (optCommand /= DryRun) $ do
       (if optVerbose then withOutput else id) $ doInstall opt r
     echo $ "\n" <> finishMessage opt
@@ -144,7 +150,7 @@ main = shelly $ silently $ do
           Build -> "Rebuild completed in profile "<> toTextIgnore (cfgDestProfile optCfg)
           Switch -> "Rebuild done"
 
-        report cfg r = echo $ T.pack (PP.render (makeReport cfg r))
+        report keepInstalled cfg r = echo $ T.pack (PP.render (makeReport keepInstalled cfg r))
 
         withOutput = print_stdout True . print_stderr True
 
@@ -152,7 +158,7 @@ checkConfig :: Config -> Sh ()
 checkConfig Config{..} = do
   unlessM (test_f cfgDeclaredPackages) $ do
     errorExit $ [st|Package file `%s' does not exist. Aborting.|] (toTextIgnore cfgDeclaredPackages)
-  whenM (test_f cfgDeclaredOutPaths) $ do
+  unlessM (test_f cfgDeclaredOutPaths) $ do
     errorExit $ [st|Store path file `%s' does not exist. Aborting.|] (toTextIgnore cfgDeclaredOutPaths)
 
 getResults :: Config -> Sh Results
@@ -170,7 +176,7 @@ getResults cfg@Config{..} = do
 -- TODO: should probably move to another module (Command.hs?)
 getStorePaths :: Config -> Sh (Set PackageWithPath)
 getStorePaths Config{..} = do
-  fileExists <- test_f cfgDeclaredOutPaths
+  fileExists <- test_e cfgDeclaredOutPaths
   if fileExists 
    then do
      paths <- fmap (map T.strip . T.lines) . readfile $ cfgDeclaredOutPaths
@@ -188,8 +194,8 @@ getStorePaths Config{..} = do
                                           , pwpPath = path 
                                           }
 
-makeReport :: Config -> Results -> PP.Doc
-makeReport Config{..} r = 
+makeReport :: Bool -> Config -> Results -> PP.Doc
+makeReport keepInstalled Config{..} r = 
   let (upds, install', removing') = 
         calculateUpdates (installing r) (M.keysSet . removing $ r)
       versionUpdates = S.filter isStrictUpdate upds
@@ -205,7 +211,7 @@ makeReport Config{..} r =
      PP.text "Reinstalling from source:" $$ PP.empty
      $$ PP.nest 2 (formatSet formatPackageWithPath . S.map fst $ sourceReinstalls)
      $$ PP.char ' ' $$
-     PP.text "Removing:" 
+     (if keepInstalled then PP.text "NOT removing (due to --keep-installed):" else "Removing:" )
      $$ PP.nest 2 (formatSet formatPackageWithPath removing')
      $$ PP.char ' ' $$
      pptext "Updates through store-path packages:"
@@ -229,13 +235,21 @@ doInstall Opt{..} r = do
          (toTextIgnore . cfgDeclaredPackages $ optCfg)
          (toTextIgnore . cfgDestProfile $ optCfg)
   nixCmdCfgExecute $ removePackages optCfg
-  pkgCmd "install package list" installPackages 
-    . map formatPackageWithPath 
-    . S.toList . M.keysSet 
-    . wantedFromDeclared $ r
   echo $ [st|\n* Installing packages from %s to cache profile \n   (%s)|] 
          (toTextIgnore . cfgDeclaredOutPaths $ optCfg)
          (toTextIgnore . cfgDestProfile $ optCfg)
+  when optKeepInstalled $ do
+    echo $ [st|\n* Installing from %s to cache profile \n   (%s)|] 
+           (toTextIgnore . cfgProfile $ optCfg)
+           (toTextIgnore . cfgDestProfile $ optCfg)
+    pkgCmd "save currently installed" (installPackages (Just (cfgProfile optCfg))) 
+           . map formatPackageWithPath
+           . S.toList . M.keysSet
+           . rInstalled $ r
+  pkgCmd "install package list" (installPackages Nothing)
+    . map formatPackageWithPath 
+    . S.toList . M.keysSet 
+    . wantedFromDeclared $ r
   pkgCmd "install store paths" installStorePaths (map pwpPath . S.toList . rStorePaths $ r)
   when (optCommand == Switch) $ do
     echo $ [st|\n* Switching profile %s|] (toTextIgnore . cfgProfile $ optCfg)
@@ -245,3 +259,4 @@ doInstall Opt{..} r = do
           then echo_err $ "nix-rebuild: Nothing to be installed from " <> source
           else nixCmdCfgExecute $ installCmd optCfg ps
         nixCmdCfgExecute = nixCmd_ . \n -> n { nixDryRun = optCommand == DryRun }
+

@@ -101,8 +101,8 @@ findUpdate :: (PackageWithPath, PkgStatus) -- ^ Added package
            -> Maybe Upd
 findUpdate added removed = mkUpd added removed
   where mkUpd (Pwp { pwpPkg = (VPkg { pName = uName , pVer = uNew}) 
-                    , pwpPath = uNewPath
-                    }
+                   , pwpPath = uNewPath
+                   }
                , uStatus) 
               (Pwp { pwpPkg = (VPkg { pName = n2, pVer =  uOld})
                    , pwpPath = uOldPath

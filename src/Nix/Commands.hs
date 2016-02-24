@@ -88,8 +88,9 @@ nixDestProfile :: Config -> NixCmd -> Nix
 nixDestProfile (Config{..}) nixcmd = nixDefault cfgDestProfile cfgInclude nixcmd 
 
 -- | install selected packages to the destination profile
-installPackages :: Config -> [Text] -> Nix
-installPackages cfg@Config{..} ps =  (nixDestProfile cfg (NixInstall $ NIOs False Nothing))
+installPackages :: Maybe FilePath -> Config -> [Text] -> Nix
+installPackages fromProfile cfg@Config{..} ps =  
+   (nixDestProfile cfg (NixInstall $ NIOs {nioRemoveAll = False, nioFromProfile = fromProfile}))
                           { nixFile = Just cfgDeclaredPackages
                           , nixSelection = Just ps
                           } 
@@ -106,7 +107,7 @@ removePackages, switchToNewPackages :: Config -> Nix
 removePackages cfg@Config{..} = (nixDestProfile cfg NixUninstall)
 switchToNewPackages Config{..} = 
   (nixDefault cfgProfile cfgInclude 
-              (NixInstall $ NIOs { nioRemoveAll = True 
+              (NixInstall $ NIOs { nioRemoveAll = True
                                  , nioFromProfile = Just cfgDestProfile}))
                                        
 -- | Run a Nix command, ignoring output
@@ -118,6 +119,3 @@ nixCmd, nixCmdErr :: Nix -> Sh Text
 nixCmd n = uncurry run $ nixCmdStrings n
 nixCmdErr n = Utils.runStderr nix args
   where (nix, args) = nixCmdStrings n
-
-
-  
