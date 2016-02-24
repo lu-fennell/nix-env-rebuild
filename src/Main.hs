@@ -173,7 +173,6 @@ getResults cfg@Config{..} = do
            return Results{..}
         where parseNix p c = S.fromList <$> P.parseNixOutput p c
 
--- TODO: should probably move to another module (Command.hs?)
 getStorePaths :: Config -> Sh (Set PackageWithPath)
 getStorePaths Config{..} = do
   fileExists <- test_e cfgDeclaredOutPaths
@@ -188,8 +187,6 @@ getStorePaths Config{..} = do
   where parsePackageFromPath = Utils.fromJustThrow 
                                . fmap parseVersionedPackage 
                                . Attoparsec.parseOnly (P.fromStorePath "" takeText) 
-                                                      -- out paths are given relative to the store dir 
-                                                      -- TODO: move this parser in the OutputParser module
         addStoreDir path p = return $ Pwp { pwpPkg = p
                                           , pwpPath = path 
                                           }
