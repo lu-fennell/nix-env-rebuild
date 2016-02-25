@@ -15,5 +15,5 @@ nix-shell --run 'cabal sdist'
 # Try to build the package with nix
 nix-build -E 'with (import <nixpkgs> {}); with haskellPackages; callPackage ./. {}'
 
-echo "=============="
+echo "==============="
 echo "All seems well!"
