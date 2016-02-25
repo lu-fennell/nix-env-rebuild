@@ -11,7 +11,7 @@ The set of declared packages is determined by a Nix-expression read
 from the *packages file* (option `--packages`, default
 `~/.nixpkgs/packages.nix`) and, optionally, by a list of store-paths
 (option `--store-path-list`, default
-`~/.nixpkgs/store-path-install-list.txt`). Store paths override
+`~/.nixpkgs/store-paths.txt`). Store paths override
 entries in the packages file.
 
 Packages file example:
@@ -27,7 +27,7 @@ with import <nixpkgs> {};
 
 Store path list example
 ```
-# file ~/.nixpkgs/store-path-install-list.txt
+# file ~/.nixpkgs/store-paths.txt
 #  Specify one store path per line.
 #  Start comments with a hash ('#').
 #  Blank lines are ignored.
@@ -72,7 +72,7 @@ firefox-42.0
 git-2.7.0
 owncloud-client-1.7.1
 ````
-Using `packages.nix` and `store-path-install-list.txt` from above,
+Using `packages.nix` and `store-paths.txt` from above,
 `nix-env-rebuild dry-run` will report the following:
 
 ````
