@@ -274,18 +274,15 @@ main = defaultMain
      ]
 
   , testGroup "Result views"
-    [ testCase "removing" $
-      removing ex_result1 @?= fromPackageListWithStatus ["remove-me-1", "somepackage-1.1.2"]
-
-    , testCase "install fresh" $
-      installing ex_result1 @?= fromPackageListWithStatus ["newpackage-1", "somepackage-1.1.1"]
+    [ testCase "wanted" $
+      wanted ex_result1 @?= fromPackageListWithStatus ["newpackage-1", "somepackage-1.1.1", "Agda-3.4", "emacs-24", "not-wanted-222", "libreoffice-2.3"] -- TODO: not-wanted-222 has the wrong name.. store paths are always wanted
 
     , testCase "wantedFromDeclared" $
       wantedFromDeclared ex_result1 
       @?= fromPackageListWithStatus["newpackage-1", "somepackage-1.1.1"]
 
     , testCase "unversioned updates" $
-      installing ex_texliveResults
+      wanted ex_texliveResults
       @?= M.fromList 
           [ (Pwp { pwpPkg =  VPkg { pName = "texlive-full" , pVer = ""}
                 , pwpPath = "/nix/store/lynr5fvcpp21rzjaz1ahjzn1zd7r0dkr-TeXLive-linkdir"

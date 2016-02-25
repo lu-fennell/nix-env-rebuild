@@ -15,6 +15,7 @@ module Utils
        , runStderr
        , maybeOpt
        , removeKeys
+       , removeKeysOn
        ) where
 
 import BasicPrelude hiding (FilePath, (</>), (<.>))
@@ -60,7 +61,10 @@ maybeOpt :: Text -> Maybe Text -> [Text]
 maybeOpt opt = maybe [] (\p -> [opt, p])
 
 removeKeys :: (Eq a, Ord a) => Map a b -> Set a -> Map a b
-removeKeys m s = Set.foldl' (\m k -> Map.delete k m) m s
+removeKeys m s = removeKeysOn id m s
+
+removeKeysOn :: (Eq a, Eq c, Ord a) => (a -> c) -> Map a b -> Set a -> Map a b
+removeKeysOn proj m s = Set.foldl' (\m k -> Map.filterWithKey (\k' _ -> not (proj k' == proj k)) m) m s
 
 -- -------------------------------------------------------------------
 -- Filepath lenses

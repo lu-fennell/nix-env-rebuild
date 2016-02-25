@@ -197,7 +197,7 @@ getStorePaths Config{..} = do
 makeReport :: Bool -> Config -> Results -> PP.Doc
 makeReport keepInstalled Config{..} r = 
   let (upds, install', removing') = 
-        calculateUpdates (installing r) (M.keysSet . removing $ r)
+        calculateUpdates (wanted r) (M.keysSet . rInstalled $ r)
       versionUpdates = S.filter isStrictUpdate upds
       reinstalls = S.map newPackageAndStatus $ upds S.\\ versionUpdates
       sourceReinstalls = S.filter (\(_, pwpStatus) -> pwpStatus == Source) 

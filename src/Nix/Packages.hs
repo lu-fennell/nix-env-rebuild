@@ -93,7 +93,7 @@ calculateUpdates fresh removed = (upds, fresh', removing')
                       , upd <- maybeToList $ findUpdate (f, status) r
                  ]
           removing' = removed S.\\ S.map oldPackage upds 
-          fresh' = removeKeys fresh (S.map newPackage upds)
+          fresh' = removeKeysOn (pName . pwpPkg) fresh (S.map newPackage upds)
 
 -- | Determine if an added package and a removed package form an update.
 findUpdate :: (PackageWithPath, PkgStatus) -- ^ Added package
@@ -116,17 +116,19 @@ data Results = Results { rStorePaths :: Set PackageWithPath
                        , rInstalled :: Map PackageWithPath PkgStatus }
   deriving Show
 
-removing,installing :: Results -> Map PackageWithPath PkgStatus
-removing r@Results{ rInstalled, rDeclared } = 
-  removeKeys (rInstalled M.\\ rDeclared) (rStorePaths r)
-installing r@Results{ rInstalled } = 
-  (wantedFromDeclared r M.\\ rInstalled) 
+-- | Packages that form the desired user environment. Essentially
+-- packages.nix + store-paths.txt, where store-paths.txt takes
+-- precedence.
+wanted :: Results -> Map PackageWithPath PkgStatus
+wanted r@Results{ rInstalled, rStorePaths} = 
+  M.union (removeKeysOn (pName . pwpPkg) (wantedFromDeclared r) rStorePaths)
+                       (M.fromSet (const Present) rStorePaths)
 
 -- | declared packages that should be installed, i.e. that are not
 -- overriden by some store paths
 wantedFromDeclared :: Results -> Map PackageWithPath PkgStatus
 wantedFromDeclared r@Results{  rDeclared } = 
-  removeKeys rDeclared (S.map newPackage (overridingStorePaths r))
+  removeKeysOn (pName . pwpPkg) rDeclared (S.map newPackage (overridingStorePaths r))
 
 -- | Store paths overriding declared packages (as a set of updates)
 overridingStorePaths:: Results -> Set Upd
