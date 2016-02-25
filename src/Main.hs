@@ -3,8 +3,10 @@
 module Main where
 
 import BasicPrelude hiding (try, (</>), (<.>), FilePath, show, rem, takeWhile)
+import qualified Prelude
 import Control.Applicative.QQ.ADo
 import qualified Data.Text as T
+import qualified Data.Text.IO as T
 import Options.Applicative hiding (Parser)
 import qualified Options.Applicative as Opt
 import Shelly hiding (path)
@@ -146,7 +148,7 @@ main = shelly $ silently $ do
     echo $ "\n" <> finishMessage opt
 
   where finishMessage Opt{..} = case optCommand of
-          DryRun -> "Dry run. Not doing anyting."
+          DryRun -> "Dry run. Not doing anything."
           Build -> "Rebuild completed in profile "<> toTextIgnore (cfgDestProfile optCfg)
           Switch -> "Rebuild done"
 
@@ -158,8 +160,8 @@ checkConfig :: Config -> Sh ()
 checkConfig Config{..} = do
   unlessM (test_f cfgDeclaredPackages) $ do
     errorExit $ [st|Package file `%s' does not exist. Aborting.|] (toTextIgnore cfgDeclaredPackages)
-  unlessM (test_f cfgDeclaredOutPaths) $ do
-    errorExit $ [st|Store path file `%s' does not exist. Aborting.|] (toTextIgnore cfgDeclaredOutPaths)
+  -- the existance of the store-path list is not mandaroty.. but a
+  -- missing list will emit a warming later on.
 
 getResults :: Config -> Sh Results
 getResults cfg@Config{..} = do
@@ -178,7 +180,8 @@ getStorePaths Config{..} = do
   fileExists <- test_e cfgDeclaredOutPaths
   if fileExists 
    then do
-     paths <- fmap (map T.strip . T.lines) . readfile $ cfgDeclaredOutPaths
+     paths <- fmap (filter (not . ("#" `T.isPrefixOf`)) . map T.strip . T.lines) . readfile 
+              $ cfgDeclaredOutPaths
      fmap S.fromList . mapM (\p -> addStoreDir p =<< (parsePackageFromPath p)) $ paths
    else do
     echo_err $ [st|Warning: installed store paths file does not exist (%s)|] 
