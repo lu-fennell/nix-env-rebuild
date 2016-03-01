@@ -97,9 +97,10 @@ getConfig = do
                      (long "keep-installed"
                      <> help "do not remove undeclared packages currently installed"
                      )
-                   optVerbose <- flag False True 
-                     (long "verbose" <> short 'v'
-                     <> help "echo nix commands and their output") 
+                   optVerbose <- flag True False
+                     (long "quiet" <> short 'q'
+                     <> help "suppress output of nix commands"
+                     )
                    optCommand <- subparser 
                      (  (Opt.command "dry-run" $ info (pure DryRun) 
                           (progDesc "Only show what would change"))
@@ -231,13 +232,9 @@ makeReport keepInstalled Config{..} r =
 ---------------------------
 doInstall :: Opt -> Results -> Sh ()
 doInstall Opt{..} r = do
-  echo $ [st|\n* Installing packages from %s to cache profile \n   (%s)|] 
-         (toTextIgnore . cfgDeclaredPackages $ optCfg)
+  echo $ [st|\n* Clearing out cache profile \n   (%s)|] 
          (toTextIgnore . cfgDestProfile $ optCfg)
   nixCmdCfgExecute $ removePackages optCfg
-  echo $ [st|\n* Installing packages from %s to cache profile \n   (%s)|] 
-         (toTextIgnore . cfgDeclaredOutPaths $ optCfg)
-         (toTextIgnore . cfgDestProfile $ optCfg)
   when optKeepInstalled $ do
     echo $ [st|\n* Installing from %s to cache profile \n   (%s)|] 
            (toTextIgnore . cfgProfile $ optCfg)
@@ -246,6 +243,9 @@ doInstall Opt{..} r = do
            . map formatPackageWithPath
            . S.toList . M.keysSet
            . rInstalled $ r
+  echo $ [st|\n* Installing packages from %s to cache profile \n   (%s)|] 
+         (toTextIgnore . cfgDeclaredOutPaths $ optCfg)
+         (toTextIgnore . cfgDestProfile $ optCfg)
   pkgCmd "install package list" (installPackages Nothing)
     . map formatPackageWithPath 
     . S.toList . M.keysSet 
