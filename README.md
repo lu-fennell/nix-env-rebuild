@@ -7,6 +7,13 @@ system packages: it reads a set of *declared packages* from
 configuration files and modifies the user profile such that it
 contains exactly those declared packages.
 
+Features:
+- Upfront configuration of the user environment through config files
+- Commands in the spirit of `nixos-rebuild`: `dry-run`, `build`, and `switch`
+- The command `dry-run` shows a detailed summary of how the current
+  environment would change
+- Support for overriding nixpkgs with store-paths
+
 The set of declared packages is determined by a Nix-expression read
 from the *packages file* (option `--packages`, default
 `~/.nixpkgs/packages.nix`) and, optionally, by a list of store-paths
@@ -57,7 +64,10 @@ There are three commands:
 - `dry-run`: Calculate and display a summary on how the selected
   profile would change when doing a rebuild. Does not actually install
   anything. See "Update output" below for an explanation of the summary.
-- `build`: Install the declared packages into a *cache profile* (option `--cache-profile`, default `$NIX_USER_PROFILE_DIR/nix-env-rebuild-cache`). Does *not* modify the selected profile.
+- `build`: Install the declared packages into a *cache profile*
+  (option `--cache-profile`, default
+  `$NIX_USER_PROFILE_DIR/nix-env-rebuild-cache`). Does *not* modify
+  the selected profile.
 - `switch`: Install the declared packages into the selected profile.
 
 ## Update summary explained
@@ -65,7 +75,7 @@ There are three commands:
 Suppose we have a current profile with these packages installed.
 
 ````
-▶ nix-env -q  -p demo/demo-profile 
+▶ nix-env -q 
 cabal-install-1.22.7.0
 evince-3.18.2
 firefox-42.0
@@ -105,7 +115,7 @@ Updates and reinstalls blocked by store-path packages:
 Dry run. Not doing anything.
 ````
 
-The summary has several categories:
+The summary has these categories:
 
 - Updating: Packages that are updated because there is a newer version
   available in nixpkgs (here firefox and git).
