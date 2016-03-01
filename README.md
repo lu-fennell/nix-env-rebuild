@@ -14,6 +14,14 @@ Features:
   environment would change
 - Support for overriding nixpkgs with store-paths
 
+## Installation
+
+Because Nix is so awesome, you can simply clone the repo and run
+
+    ▶ nix-build -E 'with (import <nixpkgs> {}); with haskellPackages; callPackage ./. { }'
+
+## Usage
+
 The set of declared packages is determined by a Nix-expression read
 from the *packages file* (option `--packages`, default
 `~/.nixpkgs/packages.nix`) and, optionally, by a list of store-paths
