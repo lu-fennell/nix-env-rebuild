@@ -117,14 +117,14 @@ Dry run. Not doing anything.
 
 The summary has these categories:
 
-- Updating: Packages that are updated because there is a newer version
+- **Updating**: Packages that are updated because there is a newer version
   available in nixpkgs (here firefox and git).
-- Adding: Packages that are not present in the current profile, but
+- **Adding**: Packages that are not present in the current profile, but
   listed in `packages.nix` (emacs, TeXLive-linkdir).
-- Removing: Packages that are currently installed but are not listed
+- **Removing**: Packages that are currently installed but are not listed
   `packages.nix` or `store-paths.txt` (evince).
-- Updates through store-path packages: the subset of updates that is
+- **Updates through store-path packages**: the subset of updates that is
   triggered by `store-paths.txt`.
-- Updates and reinstalls blocked by store-path packages: packages that
+- **Updates and reinstalls blocked by store-path packages**: packages that
   would be updated according to nixpkgs but are kept at the currently
   installed version by an override in `store-paths.txt`.
