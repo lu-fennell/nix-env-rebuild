@@ -136,13 +136,13 @@ main = shelly $ silently $ do
   opt@Opt{..} <- getConfig
   checkConfig optCfg
   searchPath <- get_env_text "NIX_PATH"
-  (if optVerbose then verbosely else silently) $ do
-    r <- getResults optCfg
+  silently $ do
     echo $ "* Calculating updates"
     echo $ [st|  - packages from %s|] (toTextIgnore . cfgDeclaredPackages $ optCfg)
     echo $ [st|  - store-paths from %s|] (toTextIgnore . cfgDeclaredOutPaths $ optCfg)
     echo $ [st|  - search path %s|] (maybe searchPath (\p -> [st|%s:%s|] p searchPath) (cfgInclude optCfg))
     echo ""
+    r <- getResults optCfg
     report optKeepInstalled optCfg r
     when (optCommand /= DryRun) $ do
       (if optVerbose then withOutput else id) $ doInstall opt r
