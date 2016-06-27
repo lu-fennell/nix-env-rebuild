@@ -167,6 +167,7 @@ checkConfig Config{..} = do
 getResults :: Config -> Sh Results
 getResults cfg@Config{..} = do
            rStorePaths <- getStorePaths cfg
+           -- TODO: this does not return the real declared packages if NIX_PATH is wrong
            rDeclared <- fmap (M.fromList . S.toList) $ parseNix P.fromRemoteQuery
                              (nixCmd $ (nixDefault cfgDestProfile cfgInclude NixQueryRemote)
                               {nixFile = Just cfgDeclaredPackages})
