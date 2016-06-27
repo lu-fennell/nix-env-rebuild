@@ -18,6 +18,7 @@ import Data.Attoparsec.Text
 
 import Nix.Packages
 import Nix.Commands
+import Nix.StorePaths
 import Utils
 import qualified Nix.OutputParser as P
 ---------------------------
@@ -301,7 +302,42 @@ main = defaultMain
                 }
           ]
    ]
- ]
+  , testGroup "Store paths" $
+     let twoResults =
+           [ Right $ Pwp { pwpPkg = VPkg "auctex-zathura" "0.1.0.3"
+                          , pwpPath = "/nix/store/wjmb5383wknpb9v3q2dpqbvi0zvxcs1w-auctex-zathura-0.1.0.3"}
+           , Right $ Pwp { pwpPkg = VPkg "owncloud-client" "1.7.1"
+                          , pwpPath = "/nix/store/l83r37rzk53f6qmyqfn8hnr4i02lgja8-owncloud-client-1.7.1"}]
+      in [ testCase "Empty file" $ parsePackageFromStorePathContents "" @?= []
+             , testCase "Easy paths" $
+                 parsePackageFromStorePathContents "\
+                   \/nix/store/wjmb5383wknpb9v3q2dpqbvi0zvxcs1w-auctex-zathura-0.1.0.3\n\
+                   \/nix/store/l83r37rzk53f6qmyqfn8hnr4i02lgja8-owncloud-client-1.7.1\n\
+                   \"
+                 @?= twoResults
+              , testCase "Easy path w/ newlines" $
+                    parsePackageFromStorePathContents "\n\
+                      \/nix/store/wjmb5383wknpb9v3q2dpqbvi0zvxcs1w-auctex-zathura-0.1.0.3\n\n\n\
+                      \/nix/store/l83r37rzk53f6qmyqfn8hnr4i02lgja8-owncloud-client-1.7.1\n\
+                      \"
+                    @?= twoResults
+              , testCase "Easy path w/ newlines and comments" $
+                    parsePackageFromStorePathContents "\n\
+                      \/nix/store/wjmb5383wknpb9v3q2dpqbvi0zvxcs1w-auctex-zathura-0.1.0.3\n\n\n\
+                      \   # A comment\n\n\
+                      \/nix/store/l83r37rzk53f6qmyqfn8hnr4i02lgja8-owncloud-client-1.7.1\n\
+                      \ ## Another one\n\n\
+                      \"
+                    @?= twoResults
+              , testCase "Easy path without trailing newlines" $
+                    parsePackageFromStorePathContents "\n\
+                      \/nix/store/wjmb5383wknpb9v3q2dpqbvi0zvxcs1w-auctex-zathura-0.1.0.3\n\n\n\
+                      \   # A comment\n\n\
+                      \/nix/store/l83r37rzk53f6qmyqfn8hnr4i02lgja8-owncloud-client-1.7.1"
+                    @?= twoResults
+               ]
+  ]
+ 
 
 ex_result1 = Results { rStorePaths = S.fromList $ map (mkOld . parseVersionedPackage)
                                [ "libreoffice-2.3"

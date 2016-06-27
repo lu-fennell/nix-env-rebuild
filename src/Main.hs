@@ -25,6 +25,7 @@ import qualified Utils
 import qualified Nix.OutputParser as P
 import Nix.Packages
 import Nix.Commands
+import Nix.StorePaths
 
 default (Text)
 
@@ -182,19 +183,17 @@ getStorePaths Config{..} = do
   fileExists <- test_e cfgDeclaredOutPaths
   if fileExists 
    then do
-     paths <- fmap (filter (not . ("#" `T.isPrefixOf`)) . map T.strip . T.lines) . readfile 
+     results <- fmap parsePackageFromStorePathContents . readfile 
               $ cfgDeclaredOutPaths
-     fmap S.fromList . mapM (\p -> addStoreDir p =<< (parsePackageFromPath p)) $ paths
+     pkgs <- fmap catMaybes $ forM results $ \r -> do 
+          case r of 
+            Left msg -> echo_err ([st|Warning: `%s'|] msg) >> return Nothing
+            Right pkg -> return $ Just pkg
+     return (S.fromList pkgs)
    else do
     echo_err $ [st|Warning: installed store paths file does not exist (%s)|] 
                (cfgDeclaredOutPaths^.Utils.fpText)
     return (S.empty)
-  where parsePackageFromPath = Utils.fromJustThrow 
-                               . fmap parseVersionedPackage 
-                               . Attoparsec.parseOnly (P.fromStorePath "" takeText) 
-        addStoreDir path p = return $ Pwp { pwpPkg = p
-                                          , pwpPath = path 
-                                          }
 
 makeReport :: Bool -> Config -> Results -> PP.Doc
 makeReport keepInstalled Config{..} r = 
