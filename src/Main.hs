@@ -189,11 +189,34 @@ getStorePaths Config{..} = do
           case r of 
             Left msg -> echo_err ([st|Warning: `%s'|] msg) >> return Nothing
             Right pkg -> return $ Just pkg
-     return (S.fromList pkgs)
+     -- filter out pkgs that do not exist
+     knownPkgs <- flip filterM pkgs $ \ (Pwp{ pwpPath = p }) -> do
+       availability <- storePathAvailability p
+       case availability of
+            Available -> return True
+            Buildable -> do 
+              echo_err $ [st|Warning: store path is not available: %s. It has to be built. |] p
+              return True
+            Unknown -> do
+              echo_err $  [st|Warning: store path is unknown: %s. Ignoring.|] p
+              return False
+     return (S.fromList knownPkgs)
    else do
     echo_err $ [st|Warning: installed store paths file does not exist (%s)|] 
                (cfgDeclaredOutPaths^.Utils.fpText)
     return (S.empty)
+
+data Availability = Available | Buildable | Unknown
+
+storePathAvailability :: Text -> Sh Availability
+storePathAvailability p = do
+  void $ cmd "nix-store" "-r" "--dry-run" p
+  (availability . T.lines) =<< lastStderr
+  where availability [] = return Available
+        availability (t:_) | "don't know" `T.isInfixOf` t = return Unknown
+        availability (t:_) | "these" `T.isPrefixOf` t = return Buildable
+        availability ts = errorExit ([st|"storePathAvailability: unable to parse output:\n%s"|] 
+                                    (T.unlines ts))
 
 makeReport :: Bool -> Config -> Results -> PP.Doc
 makeReport keepInstalled Config{..} r = 
