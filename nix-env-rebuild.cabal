@@ -36,6 +36,7 @@ executable nix-env-rebuild
         Nix.Packages
         Nix.OutputParser
         Nix.Commands
+        Nix.StorePaths
 
 test-suite nix-env-rebuild-tests
   type: exitcode-stdio-1.0
