@@ -16,6 +16,7 @@ module Utils
        , maybeOpt
        , removeKeys
        , removeKeysOn
+       , readSymbolicLink
        ) where
 
 import BasicPrelude hiding (FilePath, (</>), (<.>))
@@ -30,6 +31,7 @@ import qualified Filesystem.Path.CurrentOS as FilePath
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import Data.Text.IO (hGetContents)
+import qualified System.Posix.Files as Unix
   
 default (Text)
 
@@ -89,6 +91,16 @@ fromJustThrow :: MonadThrow m => Either String a -> m a
 fromJustThrow = either (throwM . userError) return
           
 
+              
+-- -------------------------------------------------------------------
+-- System
+-- -------------------------------------------------------------------
+
 (<$/!>) :: Text -> FilePath -> Sh FilePath
 (<$/!>) var fp = (</> fp) . review fpText . fromJustE msg <$> get_env var
   where msg = "Unable to read `" <> var <> "'"
+
+readSymbolicLink :: FilePath -> Sh FilePath
+readSymbolicLink p = liftIO (readlink p)
+  where readlink p =   fmap (view (packed.(from fpText))) (Unix.readSymbolicLink (p^.(fpText.unpacked)))
+  

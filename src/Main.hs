@@ -50,7 +50,7 @@ readDeclaredPackages, readDestProfile, readOutPathList, readProfile :: Sh FilePa
 readDeclaredPackages = "HOME" <$/!> ".nixpkgs/packages.nix" 
 readDestProfile = "NIX_USER_PROFILE_DIR" <$/!> "nix-env-rebuild-cache"
 readOutPathList = "HOME" <$/!> ".nixpkgs/store-paths.txt"
-readProfile = "HOME" <$/!> ".nix-profile"
+readProfile = Utils.readSymbolicLink =<< ("HOME" <$/!> ".nix-profile")
                       
 tmpProfileName :: Text
 tmpProfileName = "tmp-nix-rebuild-profile"
